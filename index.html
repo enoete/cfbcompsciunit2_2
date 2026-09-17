@@ -1,0 +1,2071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Searching &amp; Sorting — Lesson 2</title>
+
+<!-- ===== lesson manifest: read by the hub's sync script ===== -->
+<meta property="og:title" content="Searching &amp; Sorting — Lesson 2">
+<meta property="og:description" content="Linear and binary search, bubble and selection sort — built one line at a time in runnable blocks, with blanks you fill in yourself.">
+<meta property="og:site_name" content="CS Unit 2 · CFBC">
+<meta name="description" content="Linear search, binary search, bubble sort and selection sort in C, with a head-to-head race, exam-style practice, and a buggy textbook example to debug.">
+<meta name="theme-color"        content="#1668D8">
+<meta name="lesson:duration"    content="120 min">
+<meta name="lesson:difficulty"  content="Core">
+<meta name="lesson:objectives"  content="8">
+<meta name="lesson:questions"   content="30">
+<meta name="lesson:sections"    content="10">
+<meta name="lesson:topics"      content="Linear search,Binary search,Bubble sort,Selection sort,Algorithm complexity,Best case,Worst case">
+<meta name="lesson:activities"  content="Linear search,Binary search,Search race,Bubble sort,Selection sort,Sort comparison,Exam practice,Debug the textbook,Unit test">
+<meta name="lesson:updated"     content="2026-09-17">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDF1F0; --card:#FFFFFF; --grid:#D8E0DF;
+  --ink:#12262C; --ink2:#41565D; --ink3:#6B7F85;
+  /* the four algorithm-state colours — same meaning everywhere */
+  --cmp:#1668D8;   --cmp-s:#DEEAFB;   /* comparing        */
+  --find:#D97706;  --find-s:#FDF0DC;  /* target / current */
+  --swap:#BC3A2C;  --swap-s:#FAE3E0;  /* swapping         */
+  --done:#0F7A5A;  --done-s:#DDF0E9;  /* locked / sorted  */
+  --out:#9AAAAE;   --out-s:#EDEFEF;   /* eliminated       */
+  --r:4px;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --ui:"Space Grotesk",system-ui,-apple-system,sans-serif;
+  --serif:"Source Serif 4",Georgia,serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:var(--barh,80px)}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--serif);font-size:17px;line-height:1.62;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:28px 28px;-webkit-text-size-adjust:100%;
+}
+h1,h2,h3,h4,h5,.ui{font-family:var(--ui)}
+code,pre,.mono{font-family:var(--mono)}
+.wrap{max-width:1240px;margin:0 auto;padding:0 22px}
+/* Prose keeps a readable measure; everything structural spans the page. */
+.col{max-width:none}
+.col > p, .col > ul, .col > ol, .col > h3, .col > h4, .col > .note{max-width:72ch}
+.col > .nb, .col > .lab, .col > table, .col > .grid2, .col > details.rev{max-width:none}
+.lab-body > p, .lab-body > ul, .lab-body > ol{max-width:80ch}
+.rev-body > p{max-width:80ch}
+main{padding-bottom:110px}
+
+/* ---------- top bar ---------- */
+/* NB: this element must NOT be class="bar" — .bar is the sorting-chart bar. */
+header.topbar{
+  position:sticky;top:0;z-index:60;
+  background:#EDF1F0;                   /* solid hex - nothing can show through */
+  border-bottom:2px solid var(--ink);
+}
+header.topbar.stuck{box-shadow:0 6px 16px -10px rgba(18,38,44,.55)}
+.bar-in{max-width:1240px;margin:0 auto;padding:7px 20px;display:flex;align-items:flex-start;gap:16px}
+.brand{padding-top:5px}
+.brand{font-family:var(--ui);font-weight:700;font-size:15px;white-space:nowrap;letter-spacing:-.01em;flex:none}
+.brand .sub{color:var(--cmp)}
+.navwrap{flex:1;min-width:0}
+/* The nav WRAPS. It is not a scroller, so no link can ever sit off-screen,
+   there is no hidden scrollbar, and no scroll-container focus ring. */
+nav.jump{display:flex;flex-wrap:wrap;gap:3px;overflow:visible}
+nav.jump a{
+  font-family:var(--ui);font-size:13px;font-weight:500;text-decoration:none;color:var(--ink2);
+  padding:6px 11px 6px 8px;border-radius:var(--r);white-space:nowrap;display:flex;align-items:center;gap:6px;
+}
+nav.jump a b{
+  font-size:10.5px;font-weight:700;background:var(--grid);color:var(--ink2);
+  border-radius:3px;padding:1px 5px;line-height:1.5;flex:none;
+}
+nav.jump a:hover{background:var(--cmp-s);color:var(--cmp)}
+nav.jump a:hover b{background:var(--cmp);color:#fff}
+nav.jump a.on{background:var(--ink);color:#fff}
+nav.jump a.on b{background:var(--cmp);color:#fff}
+nav.jump a.home{color:var(--cmp);font-weight:700}
+nav.jump a.home b{background:var(--cmp);color:#fff}
+nav.jump a.home:hover{background:var(--cmp-s)}
+
+/* Not enough room for ten full labels: keep the numbers, label only where you are.
+   This is what stops the bar ever scrolling away from item 0. */
+@media(max-width:1169px){
+  .brand .sub{display:none}
+  nav.jump a span{display:none}
+  nav.jump a.on span{display:inline}
+  nav.jump a{padding:6px 8px;gap:5px}
+}
+@media(max-width:639px){
+  nav.jump a.on span{display:none}
+}
+@media(max-width:439px){
+  .brand{display:none}                 /* on a small phone the chips matter more than the title */
+  nav.jump a{padding:5px 5px}
+  nav.jump a b{padding:1px 4px}
+}
+/* JS safety net: if the nav would overflow at ANY width, collapse it for real. */
+header.topbar.compact .brand .sub{display:none}
+header.topbar.compact nav.jump a span{display:none}
+header.topbar.compact nav.jump a.on span{display:inline}
+header.topbar.compact nav.jump a{padding:6px 8px;gap:5px}
+header.topbar.micro nav.jump a.on span{display:none}
+.prog{height:3px;background:var(--grid)}
+.prog i{display:block;height:100%;background:var(--cmp);width:0;transition:width .1s linear}
+
+/* ---------- hero ---------- */
+.hero{padding:60px 0 50px;border-bottom:2px solid var(--ink)}
+.hero h1{font-size:clamp(32px,6vw,60px);line-height:1.03;margin:0 0 18px;font-weight:700;letter-spacing:-.035em;max-width:17ch}
+.hero p.lede{font-size:clamp(18px,2.3vw,22px);max-width:58ch;margin:0 0 32px;color:var(--ink2)}
+.hero-stage{background:var(--card);border:2px solid var(--ink);border-radius:var(--r);padding:28px 20px;overflow-x:auto}
+.hero-cap{font-family:var(--ui);font-size:13px;color:var(--ink3);margin-top:12px}
+
+/* ---------- sections ---------- */
+section{padding:60px 0 0;scroll-margin-top:var(--barh,80px)}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:28px}
+.sec-num{font-family:var(--ui);font-weight:700;font-size:13px;color:#fff;background:var(--ink);padding:3px 9px;border-radius:var(--r);flex:none;position:relative;top:-3px}
+.sec-head h2{font-size:clamp(24px,3.6vw,34px);margin:0;font-weight:700;letter-spacing:-.02em}
+h3{font-size:22px;margin:44px 0 12px;font-weight:600;letter-spacing:-.01em}
+h4{font-size:16px;margin:26px 0 8px;font-weight:600}
+p{margin:0 0 16px}
+.col ul,.col ol{padding-left:22px;margin:0 0 18px}
+li{margin-bottom:7px}
+a{color:var(--cmp)}
+em.term{font-style:normal;font-weight:600;border-bottom:2px solid var(--cmp)}
+code{font-size:.87em;background:#fff;border:1px solid var(--grid);padding:1px 5px;border-radius:3px;white-space:nowrap}
+.note code,.slab code,.opt code{white-space:normal}
+
+/* ---------- callouts ---------- */
+.note{border-left:4px solid var(--cmp);background:var(--card);padding:16px 20px;margin:24px 0;border-radius:0 var(--r) var(--r) 0;max-width:70ch}
+.note.warn{border-color:var(--swap)}
+.note.win{border-color:var(--done)}
+.note.analogy{border-color:var(--find);background:var(--find-s)}
+.note p:last-child{margin-bottom:0}
+.note-t{font-family:var(--ui);font-weight:600;font-size:14px;margin-bottom:6px;display:block;color:var(--cmp)}
+.note.warn .note-t{color:var(--swap)}
+.note.win .note-t{color:var(--done)}
+.note.analogy .note-t{color:#9A5300}
+
+/* ================= NOTEBOOK CELLS ================= */
+.nb{margin:22px 0;border:2px solid var(--ink);border-radius:var(--r);background:var(--card);overflow:hidden}
+.nb-why{padding:13px 18px;border-bottom:1px solid var(--grid);font-size:15.5px;background:#FBFCFC}
+.nb-why b{font-family:var(--ui);font-size:13.5px}
+.nb-why p{margin:0 0 9px}
+.nb-why p:last-child{margin:0}
+.nb-row{display:flex;align-items:stretch}
+.nb-gut{
+  flex:none;width:62px;background:var(--ink);color:#8FA8AE;font-family:var(--mono);font-size:11.5px;
+  display:flex;align-items:flex-start;justify-content:flex-end;padding:14px 9px 0 0;letter-spacing:-.02em;
+}
+.nb-gut.out{color:var(--find)}
+.nb-code{flex:1;background:var(--ink);color:#E4EDEF;font-family:var(--mono);font-size:13.5px;line-height:1.72;padding:13px 16px 13px 0;overflow-x:auto;white-space:pre}
+.nb-out{flex:1;background:#0A171C;color:#CFE0E3;font-family:var(--mono);font-size:13px;line-height:1.7;padding:12px 16px 12px 0;overflow-x:auto;white-space:pre-wrap;min-height:20px}
+.nb-outwrap{display:none;border-top:1px dashed #33484E}
+.nb-outwrap.show{display:flex}
+.nb-bar{display:flex;gap:8px;align-items:center;padding:9px 14px;background:#F4F7F7;border-top:1px solid var(--grid);flex-wrap:wrap}
+.nb-bar .hint{font-family:var(--ui);font-size:12px;color:var(--ink3)}
+.cm{color:#7D959B}.kw{color:#7EB8F5}.fn{color:#F5C56B}.st{color:#6FD3AC}.nu{color:#E9A2C8}
+.nb-out .ok{color:#6FD3AC}.nb-out .no{color:#F79A8E}.nb-out .hi{color:#F5C56B}
+.cursor{display:inline-block;width:8px;height:15px;background:var(--find);vertical-align:-2px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+
+
+/* Wide screens: the explanation sits beside the code instead of stacked above it. */
+@media(min-width:1040px){
+  .nb{display:grid;grid-template-columns:320px minmax(0,1fr);grid-template-rows:auto auto auto}
+  .nb-why{grid-column:1;grid-row:1 / span 3;border-bottom:none;border-right:1px solid var(--grid);
+          padding:16px 18px;display:flex;flex-direction:column;justify-content:center}
+  .nb-row{grid-column:2;grid-row:1}
+  .nb-outwrap{grid-column:2;grid-row:2}
+  .nb-outwrap.show{display:flex}
+  .nb-bar{grid-column:2;grid-row:3}
+  .nb-code,.nb-out{padding-right:20px}
+}
+/* ---------- buttons ---------- */
+.btn{font-family:var(--ui);font-size:14px;font-weight:600;cursor:pointer;background:var(--ink);color:#fff;border:2px solid var(--ink);padding:8px 15px;border-radius:var(--r);transition:transform .1s,background .15s}
+.btn:hover{background:#000}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:var(--cmp-s);border-color:var(--cmp);color:var(--cmp)}
+.btn.blue{background:var(--cmp);border-color:var(--cmp)}
+.btn.blue:hover{background:#0F55B4}
+.btn.amber{background:var(--find);border-color:var(--find)}
+.btn.red{background:var(--swap);border-color:var(--swap)}
+.btn.green{background:var(--done);border-color:var(--done)}
+.btn.sm{font-size:12.5px;padding:5px 10px}
+.btn.run{background:var(--done);border-color:var(--done)}
+.btn.run:hover{background:#0B6047}
+.btn:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible,.chip:focus-visible{outline:3px solid var(--find);outline-offset:2px}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:14px 0}
+.row .spacer{flex:1}
+.num{background:#fff;color:var(--ink);border:2px solid var(--ink);border-radius:3px;padding:6px 8px;font-family:var(--mono);font-size:14px;width:8ch;text-align:center}
+
+/* ---------- labs ---------- */
+.lab{background:var(--card);border:2px solid var(--ink);border-radius:var(--r);margin:30px 0;overflow:hidden}
+.lab-head{background:var(--ink);color:#fff;padding:11px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.lab-head h4{margin:0;font-size:15px;font-weight:600;color:#fff}
+.lab-kind{font-family:var(--ui);font-size:11px;font-weight:700;letter-spacing:.06em;background:var(--cmp);padding:2px 7px;border-radius:3px}
+.lab-kind.solo{background:var(--find)}
+.lab-kind.check{background:var(--done)}
+.lab-kind.bug{background:var(--swap)}
+.lab-body{padding:20px}
+.lab-body>p:first-child{margin-top:0}
+.lab-body p,.lab-body li{font-size:16px}
+.stage{background:var(--paper);border:1px dashed var(--ink3);border-radius:var(--r);padding:24px 14px;margin:14px 0;overflow-x:auto;min-height:120px;display:flex;flex-direction:column;justify-content:center}
+.readout{font-family:var(--mono);font-size:13.5px;background:var(--ink);color:#DDE8EA;padding:12px 15px;border-radius:var(--r);margin:14px 0;min-height:46px;white-space:pre-wrap;line-height:1.6}
+.readout .k{color:#7EB8F5}.readout .g{color:#6FD3AC}.readout .r{color:#F79A8E}.readout .y{color:#F5C56B}
+
+/* ================= ARRAY CELL VISUALS ================= */
+.arr{display:flex;gap:6px;justify-content:center;flex-wrap:nowrap;min-width:max-content;margin:0 auto}
+.acol{display:flex;flex-direction:column;align-items:center;gap:5px}
+.acell{
+  width:58px;height:56px;border:2px solid var(--ink);border-radius:4px;background:#fff;
+  display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:17px;
+  transition:background .2s,border-color .2s,transform .25s cubic-bezier(.2,.9,.3,1.4),color .2s;
+}
+.acell.cmp{background:var(--cmp-s);border-color:var(--cmp);transform:translateY(-6px)}
+.acell.find{background:var(--find-s);border-color:var(--find);transform:translateY(-6px)}
+.acell.swap{background:var(--swap-s);border-color:var(--swap);transform:translateY(-10px) scale(1.06)}
+.acell.done{background:var(--done-s);border-color:var(--done)}
+.acell.out{background:var(--out-s);border-color:var(--out);color:var(--out);opacity:.55}
+.acell.hitgold{background:var(--done);border-color:var(--done);color:#fff;animation:pulse .5s ease-out 2}
+@keyframes pulse{50%{transform:scale(1.15)}}
+.aidx{font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.aptr{font-family:var(--ui);font-size:10.5px;font-weight:700;height:16px;white-space:nowrap}
+.aptr.lo{color:var(--done)}.aptr.hi{color:var(--swap)}.aptr.mid{color:var(--cmp)}.aptr.i{color:var(--find)}
+
+/* ---------- sorting bars ---------- */
+.bars{display:flex;gap:7px;align-items:flex-end;justify-content:center;height:190px;min-width:max-content;margin:0 auto}
+.bcol{display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end}
+.bar{
+  width:46px;border:2px solid var(--ink);border-radius:4px 4px 0 0;background:#fff;
+  display:flex;align-items:flex-start;justify-content:center;padding-top:5px;
+  font-family:var(--mono);font-weight:700;font-size:14px;
+  transition:height .3s cubic-bezier(.2,.9,.3,1.2),background .2s,border-color .2s,transform .25s;
+}
+.bar.cmp{background:var(--cmp-s);border-color:var(--cmp)}
+.bar.swap{background:var(--swap-s);border-color:var(--swap);transform:translateY(-8px)}
+.bar.done{background:var(--done-s);border-color:var(--done)}
+.bar.min{background:var(--find-s);border-color:var(--find)}
+.blab{font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:14px;font-family:var(--ui);font-size:12px;color:var(--ink2)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px;border:2px solid}
+.stats{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.stat{background:#fff;border:2px solid var(--ink);border-radius:var(--r);padding:7px 14px;text-align:center;min-width:92px}
+.stat b{font-family:var(--ui);font-size:23px;display:block;line-height:1.1}
+.stat small{font-family:var(--ui);font-size:10.5px;color:var(--ink3);letter-spacing:.04em}
+
+/* ---------- fill-in-the-blank code ---------- */
+.fill{background:var(--ink);color:#E4EDEF;font-family:var(--mono);font-size:13.5px;line-height:2.25;padding:16px 18px;border-radius:var(--r);overflow-x:auto;margin:14px 0;white-space:pre-wrap}
+.fill .blank{font-family:var(--mono);font-size:13px;background:#0A181D;color:#fff;border:2px dashed var(--cmp);border-radius:3px;padding:3px 6px;width:14ch;text-align:center}
+.fill .blank.good{border-style:solid;border-color:var(--done);color:#6FD3AC}
+.fill .blank.bad{border-style:solid;border-color:var(--swap);color:#F79A8E}
+
+/* ---------- drag & drop ---------- */
+.dnd{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:14px 0}
+@media(max-width:720px){.dnd{grid-template-columns:1fr}}
+.pool,.slots{background:var(--paper);border:1px dashed var(--ink3);border-radius:var(--r);padding:12px;min-height:76px}
+.pane-t{font-family:var(--ui);font-size:12px;font-weight:600;color:var(--ink3);margin-bottom:9px}
+.chip{font-family:var(--mono);font-size:13px;background:#fff;border:2px solid var(--ink);border-radius:3px;padding:8px 10px;margin-bottom:8px;cursor:grab;display:flex;align-items:center;gap:8px;user-select:none;touch-action:none}
+.chip:active{cursor:grabbing}
+.chip.dragging{opacity:.4}
+.chip.floatdrag{position:fixed;z-index:999;pointer-events:none;opacity:.92;box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.chip .x{margin-left:auto;font-family:var(--ui);font-weight:700;font-size:14px;color:var(--ink3);cursor:pointer;border:none;background:transparent;padding:0 2px;line-height:1}
+.chip .x:hover{color:var(--swap)}
+.dropslot{border:2px dashed var(--grid);border-radius:3px;min-height:44px;margin-bottom:8px;padding:4px;display:flex;align-items:center;position:relative}
+.dropslot.over{border-color:var(--cmp);background:var(--cmp-s)}
+.dropslot .idx{font-family:var(--ui);font-size:11px;font-weight:700;color:var(--ink3);position:absolute;left:-20px;top:12px}
+@media(max-width:720px){.dropslot .idx{left:auto;right:6px;top:2px}}
+.dropslot .chip{margin:0;width:100%}
+.dropslot.right .chip{border-color:var(--done);background:var(--done-s)}
+.dropslot.wrong .chip{border-color:var(--swap);background:var(--swap-s)}
+
+/* ---------- quiz ---------- */
+.q{background:var(--card);border:2px solid var(--ink);border-radius:var(--r);padding:18px 20px;margin:16px 0}
+.q .qt{font-family:var(--ui);font-weight:600;font-size:16px;margin-bottom:12px}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border:2px solid var(--grid);border-radius:var(--r);margin-bottom:8px;cursor:pointer;font-size:15.5px;background:#fff}
+.opt:hover{border-color:var(--cmp)}
+.opt.right{border-color:var(--done);background:var(--done-s)}
+.opt.wrong{border-color:var(--swap);background:var(--swap-s)}
+.opt .mk{font-family:var(--ui);font-weight:700;flex:none;color:var(--ink3)}
+.fb{font-size:15px;padding:11px 14px;border-radius:var(--r);margin-top:10px;display:none}
+.fb.show{display:block}
+.fb.good{background:var(--done-s);border-left:4px solid var(--done)}
+.fb.bad{background:var(--swap-s);border-left:4px solid var(--swap)}
+.tick{color:var(--done);font-weight:700}
+
+/* ---------- tables / misc ---------- */
+table.cmp{width:100%;border-collapse:collapse;margin:20px 0;font-size:15px;background:#fff}
+table.cmp th,table.cmp td{border:1px solid var(--grid);padding:10px 12px;text-align:left;vertical-align:top}
+table.cmp th{background:var(--ink);color:#fff;font-family:var(--ui);font-size:13px;font-weight:600}
+table.cmp td:first-child{font-family:var(--ui);font-weight:600;font-size:14px}
+table.trace{width:100%;border-collapse:collapse;margin:14px 0;font-family:var(--mono);font-size:13px;background:#fff}
+table.trace th,table.trace td{border:1px solid var(--grid);padding:6px 9px;text-align:center}
+table.trace th{background:var(--ink);color:#fff;font-family:var(--ui);font-size:12px}
+table.trace tr.hl td{background:var(--find-s)}
+details.rev{border:2px solid var(--grid);border-radius:var(--r);background:#fff;margin:14px 0}
+details.rev summary{font-family:var(--ui);font-weight:600;font-size:14px;padding:11px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+details.rev summary::-webkit-details-marker{display:none}
+details.rev summary::before{content:"\25B8";color:var(--cmp);font-size:13px}
+details.rev[open] summary::before{content:"\25BE"}
+details.rev .rev-body{padding:0 16px 14px;font-size:15.5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:800px){.grid2{grid-template-columns:1fr}}
+.slab{background:var(--card);border:2px solid var(--ink);border-radius:var(--r);padding:16px 18px}
+.slab h4{margin-top:0}
+.mini{font-size:14.5px;color:var(--ink2)}
+.kbd{font-family:var(--mono);font-size:12px;background:#fff;border:1px solid var(--ink3);border-bottom-width:2px;border-radius:3px;padding:1px 5px}
+footer{border-top:2px solid var(--ink);padding:28px 0 60px;font-size:14.5px;color:var(--ink2);margin-top:40px}
+
+@media(max-width:620px){
+  body{font-size:16px}
+  .wrap{padding:0 15px}
+  .bar-in{gap:10px;padding:7px 15px}
+  .brand{font-size:13px}
+  nav.jump a{font-size:12px;padding:5px 9px 5px 6px}
+  .hero{padding:38px 0 32px}
+  section{padding:44px 0 0}
+  .nb-code,.nb-out{font-size:12px}
+  .nb-gut{width:48px;font-size:10px}
+  .acell{width:46px;height:46px;font-size:15px}
+  .bar{width:36px}
+  .lab-body{padding:15px 12px}
+  .stage{padding:18px 10px}
+  table.cmp{font-size:13.5px}
+  table.cmp th,table.cmp td{padding:7px 8px}
+  .fill{font-size:12px}
+  .readout{font-size:12.5px}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="bar-in">
+    <div class="brand">Lesson&nbsp;2<span class="sub"> // search &amp; sort</span></div>
+    <div class="navwrap" id="navwrap">
+      <nav class="jump" id="jump">
+        <a class="home" href="https://enoete.github.io/compsciu2_hub/" title="Back to the Unit 2 hub"><b>&larr;</b><span>Unit 2 hub</span></a>
+        <a href="#why"       title="Why this matters"><b>0</b><span>Why</span></a>
+        <a href="#linear"    title="Linear search"><b>1</b><span>Linear</span></a>
+        <a href="#binary"    title="Binary search"><b>2</b><span>Binary</span></a>
+        <a href="#race"      title="Head to head"><b>3</b><span>Race</span></a>
+        <a href="#bubble"    title="Bubble sort"><b>4</b><span>Bubble</span></a>
+        <a href="#selection" title="Selection sort"><b>5</b><span>Selection</span></a>
+        <a href="#compare"   title="Which one, when?"><b>6</b><span>Compare</span></a>
+        <a href="#rand"      title="Exam practice: the Rand array"><b>7</b><span>Rand array</span></a>
+        <a href="#debug"     title="Debug the textbook"><b>8</b><span>Debug</span></a>
+        <a href="#quiz"      title="Self-check"><b>9</b><span>Quiz</span></a>
+      </nav>
+    </div>
+  </div>
+  <div class="prog"><i id="progbar"></i></div>
+</header>
+<main>
+
+<!-- ============ HERO ============ -->
+<div class="wrap hero">
+  <h1>Finding one thing. Putting things in order. That's most of computing.</h1>
+  <p class="lede">Four algorithms this lesson, and you will build every one of them yourself — one line at a time, in runnable blocks, with blanks you fill in. By the end you'll know not just how they work but which one to reach for, and why one of them is roughly a hundred thousand times faster than another on a big enough list.</p>
+  <div class="hero-stage"><div id="heroStage"></div></div>
+  <p class="hero-cap">Four colours run through this entire lesson. Learn them now and every animation reads instantly.</p>
+</div>
+
+<!-- ============ WHY ============ -->
+<section id="why"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">0</span><h2>Why this is the most useful thing you'll learn all term</h2></div>
+  <div class="col">
+    <p>Open your phone. Nearly everything on the screen is the result of a search or a sort that finished before you noticed it happened.</p>
+    <ul>
+      <li>Typing a name into Contacts — that's a <strong>search</strong>.</li>
+      <li>WhatsApp putting the newest chat at the top — that's a <strong>sort</strong>.</li>
+      <li>Checking a price online — a search across millions of products.</li>
+      <li>A leaderboard, a playlist by date, a class ranked by grade — sorts, all of them.</li>
+    </ul>
+    <p>And here's the hook for the whole lesson: <strong>sorting and searching are best friends.</strong> Data that has been sorted can be searched in a way that is almost unfairly fast. That single relationship is the reason sorting exists at all.</p>
+
+    <div class="note analogy"><span class="note-t">The register vs the phone book</span>
+      <p>A teacher's class register is in whatever order students signed up. To find one name you read down the list until you hit it. No shortcuts.</p>
+      <p>A phone book is alphabetical. Nobody starts at page 1 — you flip to roughly the middle, see whether you've gone too far, and jump again. Two or three jumps and you're there, in a book of thousands of names.</p>
+      <p>Same task. Wildly different speed. <strong>The only difference is that one of them was sorted first.</strong></p>
+    </div>
+
+    <h3>The four colours</h3>
+    <p>Every animation in this lesson uses the same four colours to mean the same four things. Commit these and you'll be able to read any diagram here at a glance:</p>
+    <div class="legend" style="justify-content:flex-start;font-size:14px;margin:0 0 20px">
+      <span><i style="background:var(--cmp-s);border-color:var(--cmp)"></i><b>Comparing</b> — being looked at right now</span>
+      <span><i style="background:var(--find-s);border-color:var(--find)"></i><b>Target / current</b></span>
+      <span><i style="background:var(--swap-s);border-color:var(--swap)"></i><b>Swapping</b></span>
+      <span><i style="background:var(--done-s);border-color:var(--done)"></i><b>Locked in place</b></span>
+    </div>
+
+    <h3>How this lesson works</h3>
+    <p>Below you'll see blocks that look like this — a <strong>notebook cell</strong>. Each one has a short explanation, a piece of real C, and a Run button that shows you exactly what it prints. They build on each other, so read them in order.</p>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 0 — try it now.</b><p>Press Run. Then read the output. That's the whole rhythm of this lesson: small block, run it, understand it, move on.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [0]:</div><div class="nb-code" data-code><span class="cm">// Every C program starts here.</span>
+<span class="cm">// printf writes a line to the screen. \n means "new line".</span>
+<span class="kw">int</span> <span class="fn">main</span>(<span class="kw">void</span>) {
+    <span class="fn">printf</span>(<span class="st">"Ready to search and sort.\n"</span>);
+    <span class="kw">return</span> <span class="nu">0</span>;
+}</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[0]:</div><div class="nb-out" data-out>Ready to search and sort.</div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Every cell on this page works the same way.</span></div>
+    </div>
+
+    <p>You'll also hit <strong>Your turn</strong> cells with blanks in them. Those are the ones that matter. Reading code feels like learning; writing it actually is.</p>
+  </div>
+</div></section>
+
+<!-- ============ LINEAR SEARCH ============ -->
+<section id="linear"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">1</span><h2>Linear search — check everything</h2></div>
+  <div class="col">
+    <div class="note analogy"><span class="note-t">Looking for your keys</span>
+      <p>You've lost your keys somewhere in the house. You check the kitchen. Not there. The bedroom. Not there. The sitting room. Not there. The bathroom — got them.</p>
+      <p>You didn't do anything clever. You checked every room until you found them. That's linear search, and its honest description is: <strong>look at everything until you find it or run out of things.</strong></p>
+    </div>
+
+    <p>It sounds too simple to deserve a name. But it's the only search that works on <em>unsorted</em> data, which is most data most of the time — so you'll write it more often than anything else in this lesson. Let's build it.</p>
+
+    <h3>Building it, one cell at a time</h3>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 1 — the data.</b><p>Eight test scores for a small class. Two things to notice: array indexes start at <b>0</b>, not 1, so eight scores occupy positions 0 to 7. And C does not remember how big an array is, so we keep the size in <code>n</code> ourselves.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [1]:</div><div class="nb-code" data-code><span class="kw">int</span> scores[<span class="nu">8</span>] = {<span class="nu">72</span>, <span class="nu">45</span>, <span class="nu">91</span>, <span class="nu">63</span>, <span class="nu">88</span>, <span class="nu">55</span>, <span class="nu">79</span>, <span class="nu">34</span>};
+<span class="kw">int</span> n = <span class="nu">8</span>;
+
+<span class="fn">printf</span>(<span class="st">"Loaded %d scores.\n"</span>, n);
+<span class="fn">printf</span>(<span class="st">"First is %d, last is %d\n"</span>, scores[<span class="nu">0</span>], scores[n<span class="nu">-1</span>]);</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[1]:</div><div class="nb-out" data-out>Loaded 8 scores.
+First is 72, last is 34</div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">scores[n-1] is the last one — a habit worth forming.</span></div>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 2 — walk the whole array.</b><p>A <code>for</code> loop with <code>i</code> going from 0 up to (but not including) <code>n</code>. Say it out loud as "start at zero, keep going while i is less than n, add one each time". Almost every array program you write starts with this exact line.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [2]:</div><div class="nb-code" data-code><span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+    <span class="fn">printf</span>(<span class="st">"Index %d holds %d\n"</span>, i, scores[i]);
+}</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[2]:</div><div class="nb-out" data-out>Index 0 holds 72
+Index 1 holds 45
+Index 2 holds 91
+Index 3 holds 63
+Index 4 holds 88
+Index 5 holds 55
+Index 6 holds 79
+Index 7 holds 34</div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Eight lines out, because the loop ran eight times.</span></div>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 3 — ask a question inside the loop.</b><p>Now add an <code>if</code>. We're hunting for 88. Note <code>==</code> with two equals signs — that's "is equal to". One equals sign would <i>assign</i> 88 and quietly break everything.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [3]:</div><div class="nb-code" data-code><span class="kw">int</span> target = <span class="nu">88</span>;
+
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+    <span class="fn">printf</span>(<span class="st">"Checking index %d (%d)... "</span>, i, scores[i]);
+    <span class="kw">if</span> (scores[i] == target) {
+        <span class="fn">printf</span>(<span class="st">"MATCH!\n"</span>);
+    } <span class="kw">else</span> {
+        <span class="fn">printf</span>(<span class="st">"no\n"</span>);
+    }
+}</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[3]:</div><div class="nb-out" data-out>Checking index 0 (72)... <span class="no">no</span>
+Checking index 1 (45)... <span class="no">no</span>
+Checking index 2 (91)... <span class="no">no</span>
+Checking index 3 (63)... <span class="no">no</span>
+Checking index 4 (88)... <span class="ok">MATCH!</span>
+Checking index 5 (55)... <span class="no">no</span>
+Checking index 6 (79)... <span class="no">no</span>
+Checking index 7 (34)... <span class="no">no</span></div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Spot the waste — it found it at index 4 and kept going anyway.</span></div>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 4 — stop when you find it.</b><p>Once you've found your keys you stop searching the house. <code>break</code> jumps straight out of the loop. Look at the output: three fewer checks, same answer. That saving is the entire game in this lesson.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [4]:</div><div class="nb-code" data-code><span class="kw">int</span> found = <span class="nu">-1</span>;              <span class="cm">// -1 means "not found yet"</span>
+
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+    <span class="fn">printf</span>(<span class="st">"Checking index %d... "</span>, i);
+    <span class="kw">if</span> (scores[i] == target) {
+        found = i;
+        <span class="fn">printf</span>(<span class="st">"MATCH!\n"</span>);
+        <span class="kw">break</span>;                <span class="cm">// leave the loop immediately</span>
+    }
+    <span class="fn">printf</span>(<span class="st">"no\n"</span>);
+}
+<span class="fn">printf</span>(<span class="st">"Result: index %d\n"</span>, found);</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[4]:</div><div class="nb-out" data-out>Checking index 0... <span class="no">no</span>
+Checking index 1... <span class="no">no</span>
+Checking index 2... <span class="no">no</span>
+Checking index 3... <span class="no">no</span>
+Checking index 4... <span class="ok">MATCH!</span>
+Result: index 4</div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">5 checks instead of 8.</span></div>
+    </div>
+
+    <div class="note"><span class="note-t">Why &minus;1 and not 0?</span>
+      <p>If the function returned 0 for "not found", you could never tell that apart from "found it at index 0" — a real position. &minus;1 can never be a valid array index, so it's a safe way to say <i>nothing here</i>. You met the same trick last lesson when an empty stack had <code>top = -1</code>. Programmers call this a <em class="term">sentinel value</em>.</p>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 5 — wrap it in a function.</b><p>Now it's reusable. Give it any array, any size, any target. Notice there's no <code>break</code> — <code>return</code> leaves the whole function at once, which is even more direct. If the loop finishes without returning, the last line runs and reports failure.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [5]:</div><div class="nb-code" data-code><span class="kw">int</span> <span class="fn">linearSearch</span>(<span class="kw">int</span> arr[], <span class="kw">int</span> n, <span class="kw">int</span> target) {
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n; i++) {
+        <span class="kw">if</span> (arr[i] == target) {
+            <span class="kw">return</span> i;         <span class="cm">// found — hand back the position</span>
+        }
+    }
+    <span class="kw">return</span> <span class="nu">-1</span>;                 <span class="cm">// ran out of array — not here</span>
+}
+
+<span class="cm">// try it out</span>
+<span class="fn">printf</span>(<span class="st">"88 -> %d\n"</span>, <span class="fn">linearSearch</span>(scores, n, <span class="nu">88</span>));
+<span class="fn">printf</span>(<span class="st">"34 -> %d\n"</span>, <span class="fn">linearSearch</span>(scores, n, <span class="nu">34</span>));
+<span class="fn">printf</span>(<span class="st">"60 -> %d\n"</span>, <span class="fn">linearSearch</span>(scores, n, <span class="nu">60</span>));</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[5]:</div><div class="nb-out" data-out>88 -> <span class="ok">4</span>
+34 -> <span class="ok">7</span>
+60 -> <span class="no">-1</span></div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Three calls, three different stories.</span></div>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 6 — always handle the failure.</b><p>Returning &minus;1 is useless if nobody checks for it. This is the pattern your marker wants to see: call it once, store the answer, then branch on it.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [6]:</div><div class="nb-code" data-code><span class="kw">int</span> pos = <span class="fn">linearSearch</span>(scores, n, <span class="nu">60</span>);
+
+<span class="kw">if</span> (pos == <span class="nu">-1</span>) {
+    <span class="fn">printf</span>(<span class="st">"60 is not in the list.\n"</span>);
+} <span class="kw">else</span> {
+    <span class="fn">printf</span>(<span class="st">"60 found at index %d.\n"</span>, pos);
+}</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[6]:</div><div class="nb-out" data-out>60 is not in the list.</div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Never print "found at -1". It happens more than you'd think.</span></div>
+    </div>
+
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind">LAB 1</span><h4>Watch it hunt — and count the checks</h4></div>
+      <div class="lab-body">
+        <p>Same eight scores. Pick a target and step through, or let it run. Watch the counter: <strong>where</strong> a value sits decides how much work you do.</p>
+        <div class="row">
+          <span class="mini">Search for:</span>
+          <input id="lsTarget" class="num" value="88" inputmode="numeric">
+          <button class="btn blue sm" id="lsStep">Step</button>
+          <button class="btn amber sm" id="lsAuto">Run it</button>
+          <button class="btn ghost sm" id="lsReset">Reset</button>
+          <span class="spacer"></span>
+          <button class="btn ghost sm" data-lst="72">try 72 (best)</button>
+          <button class="btn ghost sm" data-lst="34">try 34 (worst)</button>
+          <button class="btn ghost sm" data-lst="60">try 60 (absent)</button>
+        </div>
+        <div class="stage"><div id="lsStage"></div>
+          <div class="stats"><div class="stat"><b id="lsN">0</b><small>COMPARISONS</small></div><div class="stat"><b id="lsPos">—</b><small>INDEX FOUND</small></div></div>
+        </div>
+        <div class="readout" id="lsOut">Pick a target and press Step.</div>
+      </div>
+    </div>
+
+    <div class="note win"><span class="note-t">The three cases, and the words for them</span>
+      <p><strong>Best case:</strong> it's the first element. 1 comparison.<br>
+      <strong>Worst case:</strong> it's last, or missing entirely. <code>n</code> comparisons.<br>
+      <strong>Average case:</strong> roughly <code>n/2</code>.</p>
+      <p>We write the worst case as <strong>O(n)</strong> and say "oh of n". It means: <i>double the data, double the work.</i> A list of 1,000 needs up to 1,000 checks. A list of a million needs up to a million.</p>
+    </div>
+
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind solo">YOUR TURN 1</span><h4>Fill in the blanks</h4></div>
+      <div class="lab-body">
+        <p>Write <code>countOccurrences</code> — how many times does a value appear? This one must <em>not</em> stop early, because a value can appear more than once. Four blanks. Spacing and semicolons are forgiving.</p>
+        <div class="fill" id="fillCount"></div>
+        <div class="row">
+          <button class="btn blue" id="countCheck">Check my answers</button>
+          <button class="btn ghost sm" id="countHint">Hint</button>
+          <button class="btn ghost sm" id="countReveal">Reveal</button>
+        </div>
+        <div class="readout" id="countOut">Four blanks to fill.</div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ BINARY SEARCH ============ -->
+<section id="binary"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">2</span><h2>Binary search — throw away half, every time</h2></div>
+  <div class="col">
+    <div class="note analogy"><span class="note-t">The guess-my-number game</span>
+      <p>I'm thinking of a number between 1 and 100. You guess, I say "higher" or "lower".</p>
+      <p>Guessing 1, then 2, then 3 is linear search — up to 100 guesses. But guess <strong>50</strong> first. I say "higher", and you've just deleted half the numbers in one move. Guess 75. "Lower" — half again. 62... 56... 53...</p>
+      <p>You will always win in <strong>7 guesses or fewer</strong>. For 1 to 1,000,000 you'd need only 20. That's binary search, and it is one of the genuinely beautiful ideas in computing.</p>
+    </div>
+
+    <div class="note warn"><span class="note-t">The price of admission</span>
+      <p><strong>The data must already be sorted.</strong> No exceptions, no "mostly sorted".</p>
+      <p>Think about why: the whole trick is that when the middle value is too small, you can throw away everything to its left <i>without looking at it</i>. That's only safe if you know everything to the left is smaller. On unsorted data you'd be discarding the answer half the time — and the algorithm wouldn't crash, it would just confidently tell you the value isn't there.</p>
+    </div>
+
+    <h3>Three pointers do all the work</h3>
+    <p>Binary search tracks the region still worth looking at with two variables, and inspects its midpoint with a third:</p>
+    <ul>
+      <li><code>first</code> — the left edge of what's still in play</li>
+      <li><code>last</code> — the right edge</li>
+      <li><code>middle</code> — dead centre, worked out as <code>(first + last) / 2</code></li>
+    </ul>
+    <p>Each comparison moves <code>first</code> or <code>last</code> so the region shrinks by half. When they cross, there's nothing left and the value isn't there.</p>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 7 — sorted data, and the midpoint.</b><p>Ten sorted values. Watch the integer division: <code>(0 + 9) / 2</code> is 4.5 in maths, but C throws away the fraction and gives <b>4</b>. That's fine — we just need <i>a</i> middle, not a perfect one.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [7]:</div><div class="nb-code" data-code><span class="kw">int</span> sorted[<span class="nu">10</span>] = {<span class="nu">12</span>, <span class="nu">19</span>, <span class="nu">23</span>, <span class="nu">31</span>, <span class="nu">45</span>, <span class="nu">52</span>, <span class="nu">64</span>, <span class="nu">78</span>, <span class="nu">85</span>, <span class="nu">97</span>};
+<span class="kw">int</span> n = <span class="nu">10</span>;
+
+<span class="kw">int</span> first  = <span class="nu">0</span>;
+<span class="kw">int</span> last   = n - <span class="nu">1</span>;
+<span class="kw">int</span> middle = (first + last) / <span class="nu">2</span>;
+
+<span class="fn">printf</span>(<span class="st">"first=%d last=%d middle=%d\n"</span>, first, last, middle);
+<span class="fn">printf</span>(<span class="st">"The middle value is %d\n"</span>, sorted[middle]);</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[7]:</div><div class="nb-out" data-out>first=0 last=9 middle=4
+The middle value is 45</div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">(0+9)/2 = 4 in C, not 4.5. Integer division always rounds down.</span></div>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 8 — one comparison, by hand.</b><p>We want 78. The middle holds 45. Since 78 is bigger and the list is sorted, <i>everything from index 0 to 4 is too small</i>. Gone. Five values eliminated by looking at one.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [8]:</div><div class="nb-code" data-code><span class="kw">int</span> target = <span class="nu">78</span>;
+
+<span class="kw">if</span> (sorted[middle] &lt; target) {
+    <span class="fn">printf</span>(<span class="st">"%d &lt; %d, so look RIGHT\n"</span>, sorted[middle], target);
+    first = middle + <span class="nu">1</span>;        <span class="cm">// +1: middle itself is ruled out too</span>
+} <span class="kw">else if</span> (sorted[middle] &gt; target) {
+    <span class="fn">printf</span>(<span class="st">"%d &gt; %d, so look LEFT\n"</span>, sorted[middle], target);
+    last = middle - <span class="nu">1</span>;
+} <span class="kw">else</span> {
+    <span class="fn">printf</span>(<span class="st">"Found it!\n"</span>);
+}
+<span class="fn">printf</span>(<span class="st">"Still in play: index %d to %d (%d values)\n"</span>,
+       first, last, last - first + <span class="nu">1</span>);</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[8]:</div><div class="nb-out" data-out>45 &lt; 78, so look RIGHT
+Still in play: index 5 to 9 (5 values)</div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">One comparison. Ten candidates became five.</span></div>
+    </div>
+
+    <div class="note warn"><span class="note-t">Why <code>middle + 1</code> and not just <code>middle</code>?</span>
+      <p>We already <em>checked</em> the middle — it wasn't the target. Leaving it in the region means the search can get stuck examining the same element forever: an infinite loop that freezes your program with no error message.</p>
+      <p>This is the single most common binary search bug. The rule is: <strong>every comparison must make the region strictly smaller.</strong></p>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 9 — put it in a loop.</b><p>Now repeat until found, or until the region collapses. The condition <code>first &lt;= last</code> means "there is still at least one value left to check". When <code>first</code> overtakes <code>last</code>, the region is empty and we stop.</p><p><b>Critical:</b> <code>middle</code> is recalculated <i>inside</i> the loop, at the top. Forget that and you keep testing the same spot forever.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [9]:</div><div class="nb-code" data-code>first = <span class="nu">0</span>; last = n - <span class="nu">1</span>;
+<span class="kw">int</span> steps = <span class="nu">0</span>;
+
+<span class="kw">while</span> (first &lt;= last) {
+    middle = (first + last) / <span class="nu">2</span>;      <span class="cm">// recalculate EVERY time</span>
+    steps++;
+    <span class="fn">printf</span>(<span class="st">"Step %d: checking index %d (%d)\n"</span>,
+           steps, middle, sorted[middle]);
+
+    <span class="kw">if</span> (sorted[middle] == target) {
+        <span class="fn">printf</span>(<span class="st">"  Found %d after %d steps!\n"</span>, target, steps);
+        <span class="kw">break</span>;
+    }
+    <span class="kw">else if</span> (sorted[middle] &lt; target) first = middle + <span class="nu">1</span>;
+    <span class="kw">else</span>                            last  = middle - <span class="nu">1</span>;
+}</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[9]:</div><div class="nb-out" data-out>Step 1: checking index 4 (45)
+Step 2: checking index 7 (78)
+  <span class="ok">Found 78 after 2 steps!</span></div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Two steps. Linear search would have taken eight.</span></div>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 10 — the finished function.</b><p>Same logic, packaged. Compare it line for line with <code>linearSearch</code> from Cell 5: same signature, same &minus;1 for failure. From the outside they're interchangeable. Only the speed differs.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [10]:</div><div class="nb-code" data-code><span class="kw">int</span> <span class="fn">binarySearch</span>(<span class="kw">int</span> arr[], <span class="kw">int</span> n, <span class="kw">int</span> target) {
+    <span class="kw">int</span> first = <span class="nu">0</span>, last = n - <span class="nu">1</span>;
+
+    <span class="kw">while</span> (first &lt;= last) {
+        <span class="kw">int</span> middle = (first + last) / <span class="nu">2</span>;
+
+        <span class="kw">if</span> (arr[middle] == target)      <span class="kw">return</span> middle;
+        <span class="kw">else if</span> (arr[middle] &lt; target)  first = middle + <span class="nu">1</span>;
+        <span class="kw">else</span>                           last  = middle - <span class="nu">1</span>;
+    }
+    <span class="kw">return</span> <span class="nu">-1</span>;
+}
+
+<span class="fn">printf</span>(<span class="st">"12 -> %d\n"</span>, <span class="fn">binarySearch</span>(sorted, <span class="nu">10</span>, <span class="nu">12</span>));
+<span class="fn">printf</span>(<span class="st">"97 -> %d\n"</span>, <span class="fn">binarySearch</span>(sorted, <span class="nu">10</span>, <span class="nu">97</span>));
+<span class="fn">printf</span>(<span class="st">"50 -> %d\n"</span>, <span class="fn">binarySearch</span>(sorted, <span class="nu">10</span>, <span class="nu">50</span>));</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[10]:</div><div class="nb-out" data-out>12 -> <span class="ok">0</span>
+97 -> <span class="ok">9</span>
+50 -> <span class="no">-1</span></div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">50 sits between 45 and 52, so it genuinely isn't there.</span></div>
+    </div>
+
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind">LAB 2</span><h4>Watch half the array disappear</h4></div>
+      <div class="lab-body">
+        <p>Grey means <strong>eliminated</strong> — thrown away without ever being looked at. That's where the speed comes from. Try 97 (the last value): linear search needs 10 checks, binary needs 4.</p>
+        <div class="row">
+          <span class="mini">Search for:</span>
+          <input id="bsTarget" class="num" value="78" inputmode="numeric">
+          <button class="btn blue sm" id="bsStep">Step</button>
+          <button class="btn amber sm" id="bsAuto">Run it</button>
+          <button class="btn ghost sm" id="bsReset">Reset</button>
+          <span class="spacer"></span>
+          <button class="btn ghost sm" data-bst="45">try 45</button>
+          <button class="btn ghost sm" data-bst="97">try 97</button>
+          <button class="btn ghost sm" data-bst="50">try 50 (absent)</button>
+        </div>
+        <div class="stage"><div id="bsStage"></div>
+          <div class="stats">
+            <div class="stat"><b id="bsN">0</b><small>COMPARISONS</small></div>
+            <div class="stat"><b id="bsLeft">10</b><small>STILL IN PLAY</small></div>
+            <div class="stat"><b id="bsPos">—</b><small>INDEX FOUND</small></div>
+          </div>
+        </div>
+        <div class="readout" id="bsOut">Press Step to begin.</div>
+      </div>
+    </div>
+
+    <h3>How fast is "throw away half"?</h3>
+    <p>Every step halves what's left. So the question "how many steps?" becomes "how many times can I halve this before I reach 1?" That's a logarithm — which is why we call it <strong>O(log n)</strong>.</p>
+    <p>Numbers make it real:</p>
+    <table class="cmp">
+      <tr><th>List size</th><th>Linear search (worst)</th><th>Binary search (worst)</th><th>Binary is faster by</th></tr>
+      <tr><td>10</td><td>10 checks</td><td>4 checks</td><td>2.5&times;</td></tr>
+      <tr><td>100</td><td>100 checks</td><td>7 checks</td><td>14&times;</td></tr>
+      <tr><td>1,000</td><td>1,000 checks</td><td>10 checks</td><td>100&times;</td></tr>
+      <tr><td>1,000,000</td><td>1,000,000 checks</td><td>20 checks</td><td>50,000&times;</td></tr>
+      <tr><td>1,000,000,000</td><td>1 billion checks</td><td><strong>30 checks</strong></td><td>33,000,000&times;</td></tr>
+    </table>
+    <p>Read that last row again. A billion names, and binary search finds any one of them in thirty questions. Multiply the list by a thousand and binary search needs about <em>ten more steps</em>. That is what O(log n) means in your bones.</p>
+
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind solo">YOUR TURN 2</span><h4>Fill in the binary search</h4></div>
+      <div class="lab-body">
+        <p>Five blanks. Before you type, ask yourself for each one: <i>does this make the region smaller?</i> If not, you've written an infinite loop.</p>
+        <div class="fill" id="fillBin"></div>
+        <div class="row">
+          <button class="btn blue" id="binCheck">Check my answers</button>
+          <button class="btn ghost sm" id="binHint">Hint</button>
+          <button class="btn ghost sm" id="binReveal">Reveal</button>
+        </div>
+        <div class="readout" id="binOut">Five blanks to fill.</div>
+      </div>
+    </div>
+
+    <details class="rev"><summary>Three ways students break binary search — worth reading before you write one</summary><div class="rev-body">
+      <p><b>1. Forgetting to recalculate <code>middle</code> inside the loop.</b> If <code>middle</code> is only set once before the loop, you test the same element forever. The program hangs. No error, no crash, just a frozen terminal.</p>
+      <p><b>2. Writing <code>first = middle</code> instead of <code>first = middle + 1</code>.</b> When the region shrinks to two elements, it stops shrinking — same infinite loop.</p>
+      <p><b>3. Using it on unsorted data.</b> No crash, no warning. It simply returns &minus;1 for values that are definitely in the array. If binary search "can't find" something you can see with your own eyes, check whether the array is actually sorted.</p>
+    </div></details>
+  </div>
+</div></section>
+
+<!-- ============ THE RACE ============ -->
+<section id="race"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">3</span><h2>Head to head</h2></div>
+  <div class="col">
+    <p>Enough theory. Same sorted list of 32 values, same target, both algorithms at once.</p>
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind">LAB 3</span><h4>Linear vs binary on 32 values</h4></div>
+      <div class="lab-body">
+        <div class="row">
+          <span class="mini">Find the value at position:</span>
+          <input id="raceIdx" class="num" value="28" inputmode="numeric">
+          <button class="btn blue" id="raceRun">Race them</button>
+          <button class="btn ghost sm" id="raceReset">Reset</button>
+          <span class="mini">(0–31)</span>
+        </div>
+        <div class="grid2" style="gap:14px">
+          <div class="slab" style="padding:0;overflow:hidden">
+            <div style="background:var(--ink);color:#fff;padding:8px 13px;font-family:var(--ui);font-size:13px;font-weight:600">Linear search</div>
+            <div style="padding:13px"><div id="raceL" class="stage" style="margin:0 0 10px;min-height:76px;padding:12px 8px"></div>
+              <div class="stats" style="justify-content:flex-start"><div class="stat"><b id="raceLN">0</b><small>COMPARISONS</small></div></div></div>
+          </div>
+          <div class="slab" style="padding:0;overflow:hidden">
+            <div style="background:var(--ink);color:#fff;padding:8px 13px;font-family:var(--ui);font-size:13px;font-weight:600">Binary search</div>
+            <div style="padding:13px"><div id="raceB" class="stage" style="margin:0 0 10px;min-height:76px;padding:12px 8px"></div>
+              <div class="stats" style="justify-content:flex-start"><div class="stat"><b id="raceBN">0</b><small>COMPARISONS</small></div></div></div>
+          </div>
+        </div>
+        <div class="readout" id="raceOut">Pick a position and race them. Try 31 — the very last value.</div>
+      </div>
+    </div>
+
+    <div class="note"><span class="note-t">When linear search actually wins</span>
+      <p>Binary search isn't free. It demands sorted data, and sorting takes real work. So:</p>
+      <ul style="margin-bottom:0">
+        <li><strong>Searching once, on unsorted data?</strong> Linear. Sorting first would cost more than the search saves.</li>
+        <li><strong>Searching over and over?</strong> Sort once, then binary search forever. The sort pays for itself after a handful of lookups.</li>
+        <li><strong>Tiny list?</strong> Linear. On 10 items nobody can tell the difference, and linear is four lines.</li>
+      </ul>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ BUBBLE SORT ============ -->
+<section id="bubble"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">4</span><h2>Bubble sort — nudge your neighbour</h2></div>
+  <div class="col">
+    <div class="note analogy"><span class="note-t">The school photo line-up</span>
+      <p>A teacher needs the class lined up shortest to tallest. She doesn't measure everyone and calculate positions. She walks the line and compares <strong>just two people at a time</strong>: "you two — swap." Then the next pair. Then the next.</p>
+      <p>One walk down the line, and the tallest person has been pushed all the way to the end — because every time she met them, they were the taller one. Walk again and the second-tallest settles. Keep going and the line sorts itself, with nobody ever comparing anything except their immediate neighbour.</p>
+      <p>That's bubble sort. Big values "bubble" to the end like air rising in a glass of soda.</p>
+    </div>
+
+    <h3>The swap — and why it needs a third variable</h3>
+    <p>Before any sorting, one small thing has to be right. Swapping two values in C is not one line, and the reason is worth a minute.</p>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 11 — the broken swap.</b><p>The obvious approach destroys data. Run it and watch both variables end up the same. The moment <code>a = b</code> runs, the old value of <code>a</code> is gone — overwritten, unrecoverable.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [11]:</div><div class="nb-code" data-code><span class="kw">int</span> a = <span class="nu">5</span>, b = <span class="nu">9</span>;
+<span class="fn">printf</span>(<span class="st">"before: a=%d b=%d\n"</span>, a, b);
+
+a = b;      <span class="cm">// a is now 9 — and the 5 is GONE FOREVER</span>
+b = a;      <span class="cm">// b = 9. We just copied 9 onto itself.</span>
+
+<span class="fn">printf</span>(<span class="st">"after:  a=%d b=%d\n"</span>, a, b);</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[11]:</div><div class="nb-out" data-out>before: a=5 b=9
+after:  <span class="no">a=9 b=9</span>   &lt;-- the 5 is lost</div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Two variables, one value. Data destroyed.</span></div>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 12 — the correct swap.</b><p>Park one value somewhere safe first. <code>temp</code> is that safe place. Same idea as last lesson, where you needed a <code>temp</code> pointer before moving <code>head</code> — <b>never overwrite something until a copy exists elsewhere.</b></p></div>
+      <div class="nb-row"><div class="nb-gut">In [12]:</div><div class="nb-code" data-code><span class="kw">int</span> a = <span class="nu">5</span>, b = <span class="nu">9</span>, temp;
+<span class="fn">printf</span>(<span class="st">"before: a=%d b=%d\n"</span>, a, b);
+
+temp = a;   <span class="cm">// 1. copy a somewhere safe   (temp=5)</span>
+a    = b;   <span class="cm">// 2. now a can be overwritten (a=9)</span>
+b    = temp;<span class="cm">// 3. put the saved value back (b=5)</span>
+
+<span class="fn">printf</span>(<span class="st">"after:  a=%d b=%d\n"</span>, a, b);</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[12]:</div><div class="nb-out" data-out>before: a=5 b=9
+after:  <span class="ok">a=9 b=5</span></div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Three lines, in this order, every time.</span></div>
+    </div>
+
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind solo">YOUR TURN 3</span><h4>Order the swap — then watch the wrong order destroy the data</h4></div>
+      <div class="lab-body">
+        <p>Drag the three statements into order and press Run. Then deliberately get it wrong and run it again. Seeing a value vanish is worth more than being told it would.</p>
+        <div class="dnd" data-order-game="swapOrder">
+          <div>
+            <div class="pane-t">Statements</div>
+            <div class="pool" data-pool>
+              <div class="chip" draggable="true" data-id="b">arr[j] = arr[j+1];</div>
+              <div class="chip" draggable="true" data-id="a">temp = arr[j];</div>
+              <div class="chip" draggable="true" data-id="c">arr[j+1] = temp;</div>
+            </div>
+          </div>
+          <div>
+            <div class="pane-t">Your order</div>
+            <div class="slots">
+              <div class="dropslot" data-slot="0"><span class="idx">1</span></div>
+              <div class="dropslot" data-slot="1"><span class="idx">2</span></div>
+              <div class="dropslot" data-slot="2"><span class="idx">3</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="row"><button class="btn blue" id="swRun">Run my order</button><button class="btn ghost sm" id="swReset">Reset</button></div>
+        <div class="stage" style="min-height:150px"><div id="swStage"></div></div>
+        <div class="readout" id="swOut">Place all three, then run.</div>
+      </div>
+    </div>
+
+    <h3>Now build the sort</h3>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 13 — one pass down the line.</b><p>Compare each neighbouring pair, swap if they're out of order. The loop stops at <code>n-1</code> because <code>j+1</code> must stay inside the array — go one further and you read memory that isn't yours.</p><p>Watch the output: after one pass the biggest value, 91, has reached the end. It isn't sorted yet, but <b>one element is now definitely in its final place.</b></p></div>
+      <div class="nb-row"><div class="nb-gut">In [13]:</div><div class="nb-code" data-code><span class="kw">int</span> arr[<span class="nu">6</span>] = {<span class="nu">40</span>, <span class="nu">11</span>, <span class="nu">91</span>, <span class="nu">7</span>, <span class="nu">24</span>, <span class="nu">63</span>};
+<span class="kw">int</span> n = <span class="nu">6</span>, temp;
+
+<span class="kw">for</span> (<span class="kw">int</span> j = <span class="nu">0</span>; j &lt; n - <span class="nu">1</span>; j++) {
+    <span class="kw">if</span> (arr[j] &gt; arr[j + <span class="nu">1</span>]) {
+        temp       = arr[j];
+        arr[j]     = arr[j + <span class="nu">1</span>];
+        arr[j + <span class="nu">1</span>] = temp;
+        <span class="fn">printf</span>(<span class="st">"swapped -> "</span>);
+    } <span class="kw">else</span> {
+        <span class="fn">printf</span>(<span class="st">"kept    -> "</span>);
+    }
+    <span class="kw">for</span> (<span class="kw">int</span> k = <span class="nu">0</span>; k &lt; n; k++) <span class="fn">printf</span>(<span class="st">"%d "</span>, arr[k]);
+    <span class="fn">printf</span>(<span class="st">"\n"</span>);
+}</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[13]:</div><div class="nb-out" data-out>swapped -> 11 40 91 7 24 63
+kept    -> 11 40 91 7 24 63
+swapped -> 11 40 7 91 24 63
+swapped -> 11 40 7 24 91 63
+swapped -> 11 40 7 24 63 <span class="ok">91</span>
+
+<span class="hi">After one pass, 91 is home.</span></div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">5 comparisons for 6 elements — always n-1.</span></div>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 14 — repeat until sorted.</b><p>One pass places one value. So wrap the whole thing in a second loop and do it <code>n-1</code> times. This is the <b>nested loop</b> — the shape that makes bubble sort O(n²), and the shape students most often get tangled in.</p><p>The clever bit is <code>n-i-1</code>. After pass <code>i</code>, the last <code>i</code> values are already sorted, so don't waste time re-checking them.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [14]:</div><div class="nb-code" data-code><span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n - <span class="nu">1</span>; i++) {          <span class="cm">// n-1 passes</span>
+    <span class="kw">for</span> (<span class="kw">int</span> j = <span class="nu">0</span>; j &lt; n - i - <span class="nu">1</span>; j++) {  <span class="cm">// shrinking inner loop</span>
+        <span class="kw">if</span> (arr[j] &gt; arr[j + <span class="nu">1</span>]) {
+            temp       = arr[j];
+            arr[j]     = arr[j + <span class="nu">1</span>];
+            arr[j + <span class="nu">1</span>] = temp;
+        }
+    }
+    <span class="fn">printf</span>(<span class="st">"After pass %d: "</span>, i + <span class="nu">1</span>);
+    <span class="kw">for</span> (<span class="kw">int</span> k = <span class="nu">0</span>; k &lt; n; k++) <span class="fn">printf</span>(<span class="st">"%d "</span>, arr[k]);
+    <span class="fn">printf</span>(<span class="st">"\n"</span>);
+}</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[14]:</div><div class="nb-out" data-out>After pass 1: 11 40 7 24 63 <span class="ok">91</span>
+After pass 2: 11 7 24 40 <span class="ok">63 91</span>
+After pass 3: 7 11 24 <span class="ok">40 63 91</span>
+After pass 4: 7 11 <span class="ok">24 40 63 91</span>
+After pass 5: <span class="ok">7 11 24 40 63 91</span></div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Watch the green section grow from the right, one per pass.</span></div>
+    </div>
+
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind">LAB 4</span><h4>Watch it bubble</h4></div>
+      <div class="lab-body">
+        <p>Blue = the pair being compared. Red = a swap happening. Green = locked in its final position. Step through slowly at least once before hitting Run — the point is to see <em>why</em> the green grows from the right.</p>
+        <div class="row">
+          <button class="btn blue sm" id="bbStep">Step</button>
+          <button class="btn amber sm" id="bbAuto">Run it</button>
+          <button class="btn ghost sm" id="bbPass">Finish this pass</button>
+          <button class="btn ghost sm" id="bbShuffle">New numbers</button>
+          <button class="btn ghost sm" id="bbReset">Reset</button>
+        </div>
+        <div class="stage" style="min-height:250px"><div id="bbStage"></div>
+          <div class="stats">
+            <div class="stat"><b id="bbP">0</b><small>PASS</small></div>
+            <div class="stat"><b id="bbC">0</b><small>COMPARISONS</small></div>
+            <div class="stat"><b id="bbS">0</b><small>SWAPS</small></div>
+          </div>
+        </div>
+        <div class="readout" id="bbOut">Press Step to begin.</div>
+      </div>
+    </div>
+
+    <div class="note win"><span class="note-t">The early-exit optimisation — worth marks</span>
+      <p>If a whole pass happens with <strong>zero swaps</strong>, the array is already sorted. Carrying on is pure waste. One flag fixes it:</p>
+<pre class="nb-code" style="padding:14px 16px;border-radius:var(--r);margin:10px 0 0"><span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i &lt; n - <span class="nu">1</span>; i++) {
+    <span class="kw">int</span> swapped = <span class="nu">0</span>;                     <span class="cm">// assume it's sorted</span>
+    <span class="kw">for</span> (<span class="kw">int</span> j = <span class="nu">0</span>; j &lt; n - i - <span class="nu">1</span>; j++) {
+        <span class="kw">if</span> (arr[j] &gt; arr[j+<span class="nu">1</span>]) {
+            <span class="cm">/* ...swap... */</span>
+            swapped = <span class="nu">1</span>;                  <span class="cm">// proved otherwise</span>
+        }
+    }
+    <span class="kw">if</span> (swapped == <span class="nu">0</span>) <span class="kw">break</span>;            <span class="cm">// nothing moved — we're done</span>
+}</pre>
+      <p style="margin-top:12px">This is why bubble sort's <strong>best case is O(n)</strong>: hand it an already-sorted array and it finishes after a single pass. Selection sort can't do that — it grinds through every pass regardless.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ SELECTION SORT ============ -->
+<section id="selection"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">5</span><h2>Selection sort — pick the smallest, put it in front</h2></div>
+  <div class="col">
+    <div class="note analogy"><span class="note-t">Picking teams in PE</span>
+      <p>You scan every single person available, decide who's the best, and call their name. Then you scan everyone <em>still left</em>, pick the best of those, call them. Then again. And again.</p>
+      <p>Notice how different that is from bubble sort. You don't shuffle people around while you're looking — you <strong>look first, then make exactly one move.</strong> That difference is the whole personality of selection sort.</p>
+    </div>
+
+    <p>Formally: split the array into a sorted part (left, empty at first) and an unsorted part (right, everything). Find the smallest in the unsorted part, swap it to the front of that part, and move the boundary one step right.</p>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 15 — find the smallest.</b><p>Before sorting anything, learn this pattern — it's worth marks on its own. Assume the first element is the smallest, then check every other one and update if you find better. Notice we track the <b>position</b>, not just the value, because we'll need to know where to swap from.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [15]:</div><div class="nb-code" data-code><span class="kw">int</span> arr[<span class="nu">6</span>] = {<span class="nu">40</span>, <span class="nu">11</span>, <span class="nu">91</span>, <span class="nu">7</span>, <span class="nu">24</span>, <span class="nu">63</span>};
+<span class="kw">int</span> n = <span class="nu">6</span>;
+
+<span class="kw">int</span> position = <span class="nu">0</span>;             <span class="cm">// assume index 0 holds the smallest</span>
+
+<span class="kw">for</span> (<span class="kw">int</span> d = <span class="nu">1</span>; d &lt; n; d++) {  <span class="cm">// start at 1 — 0 is our assumption</span>
+    <span class="kw">if</span> (arr[d] &lt; arr[position]) {
+        position = d;             <span class="cm">// found a smaller one</span>
+        <span class="fn">printf</span>(<span class="st">"New smallest: %d at index %d\n"</span>, arr[d], d);
+    }
+}
+<span class="fn">printf</span>(<span class="st">"Smallest overall: %d at index %d\n"</span>, arr[position], position);</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[15]:</div><div class="nb-out" data-out>New smallest: 11 at index 1
+New smallest: 7 at index 3
+Smallest overall: <span class="ok">7 at index 3</span></div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">91 and 24 and 63 never triggered an update — they weren't smaller.</span></div>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 16 — one pass: find, then swap once.</b><p>Now put the smallest where it belongs. The <code>if (position != c)</code> guard skips a pointless swap when the smallest is already in place — swapping an element with itself is harmless but wasteful.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [16]:</div><div class="nb-code" data-code><span class="kw">int</span> c = <span class="nu">0</span>, swap;          <span class="cm">// c = front of the unsorted part</span>
+position = c;
+
+<span class="kw">for</span> (<span class="kw">int</span> d = c + <span class="nu">1</span>; d &lt; n; d++)
+    <span class="kw">if</span> (arr[d] &lt; arr[position]) position = d;
+
+<span class="kw">if</span> (position != c) {
+    swap           = arr[c];
+    arr[c]         = arr[position];
+    arr[position]  = swap;
+}
+
+<span class="kw">for</span> (<span class="kw">int</span> k = <span class="nu">0</span>; k &lt; n; k++) <span class="fn">printf</span>(<span class="st">"%d "</span>, arr[k]);</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[16]:</div><div class="nb-out" data-out><span class="ok">7</span> 11 91 40 24 63
+
+<span class="hi">7 and 40 traded places. Exactly one swap this pass.</span></div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Bubble sort would have made four swaps to achieve this.</span></div>
+    </div>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 17 — the whole thing.</b><p>Wrap it in an outer loop that walks <code>c</code> from 0 to <code>n-2</code>. Why stop at <code>n-2</code>? Because once every other element is correctly placed, the final one has nowhere else to be. <b>n-1 passes for n elements</b> — a favourite exam question.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [17]:</div><div class="nb-code" data-code><span class="kw">void</span> <span class="fn">selectionSort</span>(<span class="kw">int</span> arr[], <span class="kw">int</span> n) {
+    <span class="kw">int</span> position, swap;
+
+    <span class="kw">for</span> (<span class="kw">int</span> c = <span class="nu">0</span>; c &lt; n - <span class="nu">1</span>; c++) {
+        position = c;
+
+        <span class="kw">for</span> (<span class="kw">int</span> d = c + <span class="nu">1</span>; d &lt; n; d++)
+            <span class="kw">if</span> (arr[d] &lt; arr[position]) position = d;
+
+        <span class="kw">if</span> (position != c) {
+            swap          = arr[c];
+            arr[c]        = arr[position];
+            arr[position] = swap;
+        }
+    }
+}</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[17]:</div><div class="nb-out" data-out>Start:      40 11 91 7 24 63
+Pass 1:     <span class="ok">7</span> 11 91 40 24 63
+Pass 2:     <span class="ok">7 11</span> 91 40 24 63
+Pass 3:     <span class="ok">7 11 24</span> 40 91 63
+Pass 4:     <span class="ok">7 11 24 40</span> 91 63
+Pass 5:     <span class="ok">7 11 24 40 63 91</span>
+
+<span class="hi">5 passes, but only 3 swaps — passes 2 and 4 found the smallest already in place.</span></div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Green grows from the LEFT here. Bubble sort grew from the right.</span></div>
+    </div>
+
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind">LAB 5</span><h4>Watch it select</h4></div>
+      <div class="lab-body">
+        <p>Amber marks the smallest found so far. Blue is the one being compared against it. The long amber scan, then a single red swap — that rhythm <em>is</em> selection sort.</p>
+        <div class="row">
+          <button class="btn blue sm" id="ssStep">Step</button>
+          <button class="btn amber sm" id="ssAuto">Run it</button>
+          <button class="btn ghost sm" id="ssPass">Finish this pass</button>
+          <button class="btn ghost sm" id="ssShuffle">New numbers</button>
+          <button class="btn ghost sm" id="ssReset">Reset</button>
+        </div>
+        <div class="stage" style="min-height:250px"><div id="ssStage"></div>
+          <div class="stats">
+            <div class="stat"><b id="ssP">0</b><small>PASS</small></div>
+            <div class="stat"><b id="ssC">0</b><small>COMPARISONS</small></div>
+            <div class="stat"><b id="ssS">0</b><small>SWAPS</small></div>
+          </div>
+        </div>
+        <div class="readout" id="ssOut">Press Step to begin.</div>
+      </div>
+    </div>
+
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind solo">YOUR TURN 4</span><h4>Fill in the selection sort</h4></div>
+      <div class="lab-body">
+        <p>Five blanks. The one that catches people is the inner loop's starting value — think about which elements still need checking.</p>
+        <div class="fill" id="fillSel"></div>
+        <div class="row">
+          <button class="btn blue" id="selCheck">Check my answers</button>
+          <button class="btn ghost sm" id="selHint">Hint</button>
+          <button class="btn ghost sm" id="selReveal">Reveal</button>
+        </div>
+        <div class="readout" id="selOut">Five blanks to fill.</div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ COMPARE ============ -->
+<section id="compare"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">6</span><h2>Which one, when?</h2></div>
+  <div class="col">
+    <p>Both sorts are O(n²) and both are too slow for serious data. But they fail differently, and exam questions live in that difference.</p>
+  </div>
+  <table class="cmp">
+    <tr><th></th><th>Bubble sort</th><th>Selection sort</th></tr>
+    <tr><td>Core move</td><td>Compare neighbours, swap immediately</td><td>Scan for the smallest, then swap once</td></tr>
+    <tr><td>Sorted region grows from</td><td>The right (largest settle at the end)</td><td>The left (smallest placed at the front)</td></tr>
+    <tr><td>Passes for <i>n</i> items</td><td>Up to n&minus;1</td><td>Always n&minus;1</td></tr>
+    <tr><td>Comparisons</td><td>~n²/2</td><td>~n²/2 — always, no escape</td></tr>
+    <tr><td>Swaps</td><td>Up to ~n²/2 — potentially a lot</td><td><strong>At most n&minus;1</strong></td></tr>
+    <tr><td>Best case</td><td><strong>O(n)</strong> with the swapped flag</td><td>O(n²) — no shortcut exists</td></tr>
+    <tr><td>Already-sorted input</td><td>Detects it, exits after one pass</td><td>Grinds through every pass anyway</td></tr>
+    <tr><td>Pick it when</td><td>Data is nearly sorted already</td><td>Swapping is expensive (big records)</td></tr>
+  </table>
+  <div class="col">
+    <div class="note"><span class="note-t">The one-line summary</span>
+      <p><strong>Selection sort makes fewer swaps. Bubble sort can quit early.</strong> Everything else about them is roughly the same.</p>
+      <p>Why would swaps matter more than comparisons? Because comparing two numbers is cheap, but moving a whole student record — name, ID, address, grades — is expensive. If each item is big, selection sort's promise of at most n&minus;1 moves is genuinely valuable.</p>
+    </div>
+
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind">LAB 6</span><h4>Both sorts, same data, side by side</h4></div>
+      <div class="lab-body">
+        <p>Identical starting array. Watch the green grow from opposite ends, and keep an eye on the swap counters.</p>
+        <div class="row">
+          <button class="btn blue" id="duelRun">Run both</button>
+          <button class="btn ghost sm" id="duelShuffle">New numbers</button>
+          <button class="btn ghost sm" id="duelSorted">Use already-sorted data</button>
+          <button class="btn ghost sm" id="duelReset">Reset</button>
+        </div>
+        <div class="grid2" style="gap:14px">
+          <div class="slab" style="padding:0;overflow:hidden">
+            <div style="background:var(--ink);color:#fff;padding:8px 13px;font-family:var(--ui);font-size:13px;font-weight:600">Bubble sort</div>
+            <div style="padding:12px"><div id="duelB" class="stage" style="margin:0 0 9px;min-height:170px;padding:12px 6px"></div>
+              <div class="stats"><div class="stat"><b id="duelBC">0</b><small>COMPARISONS</small></div><div class="stat"><b id="duelBS">0</b><small>SWAPS</small></div></div></div>
+          </div>
+          <div class="slab" style="padding:0;overflow:hidden">
+            <div style="background:var(--ink);color:#fff;padding:8px 13px;font-family:var(--ui);font-size:13px;font-weight:600">Selection sort</div>
+            <div style="padding:12px"><div id="duelS" class="stage" style="margin:0 0 9px;min-height:170px;padding:12px 6px"></div>
+              <div class="stats"><div class="stat"><b id="duelSC">0</b><small>COMPARISONS</small></div><div class="stat"><b id="duelSS">0</b><small>SWAPS</small></div></div></div>
+          </div>
+        </div>
+        <div class="readout" id="duelOut">Press Run both. Then try it with already-sorted data and compare the comparison counts.</div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ RAND ARRAY ============ -->
+<section id="rand"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">7</span><h2>Exam practice: the array called <span class="mono">Rand</span></h2></div>
+  <div class="col">
+    <p>This is the classic exam question on this topic. Work through it here, then write it out by hand — because in the exam you'll be drawing these boxes on paper.</p>
+    <table class="trace" style="max-width:420px">
+      <tr><th>Index</th><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td></tr>
+      <tr><th>Data</th><td>40</td><td>11</td><td>8</td><td>7</td><td>9</td><td>24</td></tr>
+    </table>
+
+    <h4>(a) Declare it in C</h4>
+    <div class="nb">
+      <div class="nb-why"><b>Cell 18 — two correct ways.</b><p>Either give the size explicitly, or let the compiler count for you. Both are valid; the second is safer because the size can never disagree with the contents.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [18]:</div><div class="nb-code" data-code><span class="cm">// Option 1 — state the size</span>
+<span class="kw">int</span> Rand[<span class="nu">6</span>] = {<span class="nu">40</span>, <span class="nu">11</span>, <span class="nu">8</span>, <span class="nu">7</span>, <span class="nu">9</span>, <span class="nu">24</span>};
+
+<span class="cm">// Option 2 — let the compiler count them</span>
+<span class="kw">int</span> Rand[] = {<span class="nu">40</span>, <span class="nu">11</span>, <span class="nu">8</span>, <span class="nu">7</span>, <span class="nu">9</span>, <span class="nu">24</span>};
+
+<span class="cm">// Getting the length back out (works only where the array was declared)</span>
+<span class="kw">int</span> n = <span class="kw">sizeof</span>(Rand) / <span class="kw">sizeof</span>(Rand[<span class="nu">0</span>]);
+<span class="fn">printf</span>(<span class="st">"n = %d\n"</span>, n);</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[18]:</div><div class="nb-out" data-out>n = 6</div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">sizeof gives bytes, so divide by the size of one element.</span></div>
+    </div>
+
+    <h4>(b) Bubble sort, pass by pass</h4>
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind check">EXAM STYLE</span><h4>Predict each pass before you reveal it</h4></div>
+      <div class="lab-body">
+        <p>Write down what you think the array looks like after each pass, <em>then</em> reveal. Getting it wrong here is free; getting it wrong in June is not.</p>
+        <div id="randPasses"></div>
+        <div class="row"><button class="btn blue" id="randNext">Reveal next pass</button><button class="btn ghost sm" id="randReset">Hide all</button></div>
+        <div class="readout" id="randOut">Predict pass 1, then reveal.</div>
+      </div>
+    </div>
+
+    <h4>(c) How many passes does each sort need?</h4>
+    <div class="note"><span class="note-t">The answer, and the reasoning</span>
+      <p><strong>Selection sort: always 5.</strong> It's n&minus;1 for n elements, no matter what the data looks like. 6 &minus; 1 = 5.</p>
+      <p><strong>Bubble sort: 5 by the formula, but this particular array is fully sorted after pass 3.</strong> Pass 4 runs and makes zero swaps, which is how a bubble sort with the swapped flag <i>detects</i> that it is finished and stops. So: 3 passes to sort it, 4 to know it is sorted, 5 if you blindly apply n&minus;1. Check this against the swaps column in part (b) above.</p>
+      <p>Read the wording carefully. "Needed to fully sort" and "n&minus;1 passes" are not always the same number, and examiners have been known to accept either with justification.</p>
+    </div>
+
+    <h4>(d) Binary search for 9 &mdash; in the <em>originally unsorted</em> array</h4>
+    <div class="note warn"><span class="note-t">This part is a trap, and it is subtler than it looks</span>
+      <p>The question says <strong>originally unsorted</strong>. Binary search on unsorted data is invalid, so the answer is not a neat list of steps &mdash; it is an explanation.</p>
+      <p>And here is the twist most students miss: trace it on this array looking for 9 and it <strong>does</strong> find it. That does not make it correct. It makes it <em>lucky</em>.</p>
+    </div>
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind bug">TRAP</span><h4>Run it on the unsorted array &mdash; then try other values</h4></div>
+      <div class="lab-body">
+        <p>The array is <code>40 11 8 7 9 24</code>. Start with 9, the value the exam asks about. Then try 40 &mdash; which is sitting at index 0, in plain sight.</p>
+        <div class="row">
+          <span class="mini">Search for:</span>
+          <button class="btn amber sm" data-trap="9">9</button>
+          <button class="btn ghost sm" data-trap="40">40</button>
+          <button class="btn ghost sm" data-trap="11">11</button>
+          <button class="btn ghost sm" data-trap="7">7</button>
+          <button class="btn ghost sm" data-trap="24">24</button>
+          <span class="spacer"></span>
+          <button class="btn blue sm" id="trapStep">Step</button>
+          <button class="btn ghost sm" id="trapReset">Reset</button>
+        </div>
+        <div class="stage"><div id="trapStage"></div></div>
+        <div class="readout" id="trapOut">Press Step.</div>
+        <p class="mini" style="margin-bottom:0">All six of those values are in the array. Work through the buttons and count how many the algorithm gets wrong.</p>
+      </div>
+    </div>
+    <div class="note win"><span class="note-t">How to write a top-band answer to (d)</span>
+      <p>"Binary search cannot validly be applied to <code>Rand</code> in its original state, because binary search requires sorted data. Traced anyway for the value 9, it examines index 2 (value 8), finds 8 &lt; 9 and discards indexes 0&ndash;2, then examines index 4 and reports 9 found there.</p>
+      <p>This result is correct only by coincidence. The step that discarded indexes 0&ndash;2 assumed every value there was smaller than 8, which is false &mdash; index 0 holds 40 and index 1 holds 11. The same algorithm on the same array returns &minus;1 for 40, 11 and 7, all of which are present. <strong>Binary search on unsorted data gives unpredictable results, with no error or warning.</strong> The array must be sorted first, giving <code>7 8 9 11 24 40</code>, in which binary search finds 9 at index 2 in a single comparison."</p>
+      <p>Saying "it doesn't work" earns a mark. Showing that it can appear to work, and explaining why that is worse, earns the lot.</p>
+    </div>
+
+    <h4>(e) Linear search for 27</h4>
+    <div class="note"><span class="note-t">Model answer</span>
+      <p>"Linear search starts at index 0 and compares each element with 27 in turn: 40 (no), 11 (no), 8 (no), 7 (no), 9 (no), 24 (no). Having reached the end of the array without a match, it returns &minus;1 to indicate that 27 is not present. Six comparisons were made — the worst case, which for linear search is <code>n</code> comparisons."</p>
+      <p>Two details earn marks: naming the number of comparisons, and saying what gets <em>returned</em> rather than just "it doesn't find it". Note that linear search is perfectly valid here — unlike (d), no sorting is required.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ DEBUG THE BOOK ============ -->
+<section id="debug"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">8</span><h2>Debug the textbook</h2></div>
+  <div class="col">
+    <p>Here's something that will serve you better than any amount of copying code down: the bubble sort printed in most course handouts <strong>does not compile</strong>. Not a style issue — genuinely broken.</p>
+    <p>Finding bugs in code someone else wrote, including code that is supposed to be authoritative, is a real skill. Have a go before you open the answer.</p>
+
+    <div class="nb">
+      <div class="nb-why"><b>Cell 19 — the textbook version.</b><p>Read it carefully. There are <b>three</b> separate faults, and at least two of them stop the compiler dead. Look especially at the loop counters.</p></div>
+      <div class="nb-row"><div class="nb-gut">In [19]:</div><div class="nb-code" data-code><span class="kw">for</span> (i = <span class="nu">0</span>; i &lt; n; i++)
+    <span class="fn">scanf</span>(<span class="st">"%d"</span>, &amp;array[i]);
+    <span class="kw">for</span> (i = <span class="nu">0</span>; i &lt; (n - <span class="nu">1</span>); i++)
+    {
+        <span class="kw">for</span> (j = <span class="nu">0</span>; j &lt; n - i - <span class="nu">1</span>; j++)
+        {
+            <span class="kw">if</span> (array[d] &gt; array[d + <span class="nu">1</span>])
+            {
+                temp         = array[j];
+                array[j]     = array[j + <span class="nu">1</span>];
+                array[j + <span class="nu">1</span>] = temp;
+            }
+        }
+    }
+<span class="fn">printf</span>(<span class="st">"Sorted list in ascending order:\n"</span>);
+<span class="kw">for</span> (c = <span class="nu">0</span>; c &lt; n; c++)
+    <span class="fn">printf</span>(<span class="st">"%d\n"</span>, array[c]);</div></div>
+      <div class="nb-outwrap"><div class="nb-gut out">Out[19]:</div><div class="nb-out" data-out><span class="no">error: 'd' undeclared (first use in this function)</span>
+<span class="no">error: 'c' undeclared (first use in this function)</span>
+
+<span class="hi">Compilation failed. It never ran at all.</span></div></div>
+      <div class="nb-bar"><button class="btn run sm" data-run>Run cell</button><span class="hint">Press Run to see what a compiler says about it.</span></div>
+    </div>
+
+    <div class="lab">
+      <div class="lab-head"><span class="lab-kind bug">LAB 7</span><h4>Find the three faults</h4></div>
+      <div class="lab-body">
+        <p>Each question below points at one real fault in the code above.</p>
+        <div id="bugQuiz"></div>
+      </div>
+    </div>
+
+    <details class="rev"><summary>The corrected version</summary><div class="rev-body">
+      <p class="mini">Every fault fixed, plus the early-exit flag. Compare it line by line with the original — being able to spot the difference is the actual skill.</p>
+<pre class="nb-code" style="padding:15px 17px;border-radius:var(--r)"><span class="kw">int</span> i, j, temp;
+
+<span class="kw">for</span> (i = <span class="nu">0</span>; i &lt; n; i++) {
+    <span class="fn">scanf</span>(<span class="st">"%d"</span>, &amp;array[i]);
+}                                    <span class="cm">// &lt;-- brace closes the input loop</span>
+
+<span class="kw">for</span> (i = <span class="nu">0</span>; i &lt; n - <span class="nu">1</span>; i++) {
+    <span class="kw">int</span> swapped = <span class="nu">0</span>;
+    <span class="kw">for</span> (j = <span class="nu">0</span>; j &lt; n - i - <span class="nu">1</span>; j++) {
+        <span class="kw">if</span> (array[j] &gt; array[j + <span class="nu">1</span>]) {   <span class="cm">// j, not d</span>
+            temp         = array[j];
+            array[j]     = array[j + <span class="nu">1</span>];
+            array[j + <span class="nu">1</span>] = temp;
+            swapped      = <span class="nu">1</span>;
+        }
+    }
+    <span class="kw">if</span> (!swapped) <span class="kw">break</span>;                <span class="cm">// early exit</span>
+}
+
+<span class="fn">printf</span>(<span class="st">"Sorted list in ascending order:\n"</span>);
+<span class="kw">for</span> (i = <span class="nu">0</span>; i &lt; n; i++) {            <span class="cm">// i, not undeclared c</span>
+    <span class="fn">printf</span>(<span class="st">"%d\n"</span>, array[i]);
+}</pre>
+    </div></details>
+
+    <div class="note"><span class="note-t">The habit worth taking away</span>
+      <p>When code doesn't work, read the <strong>first</strong> compiler error, not the last. One missing brace or undeclared variable produces a cascade of twenty errors, and nineteen of them are imaginary. Fix the first, recompile, repeat.</p>
+      <p>And when code compiles but gives wrong answers, print the array inside the loop — exactly as Cells 13 and 14 did. You cannot debug what you cannot see.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ QUIZ ============ -->
+<section id="quiz"><div class="wrap">
+  <div class="sec-head"><span class="sec-num">9</span><h2>Self-check</h2></div>
+  <div class="col">
+    <p>Thirty questions across all four algorithms. Nothing is recorded and nothing is graded — every answer comes with a full explanation, so a wrong answer here is worth more than a lucky right one.</p>
+    <div id="quizHost"></div>
+    <div class="readout" id="quizScore" style="font-size:15px">Answered 0 of 30.</div>
+  </div>
+</div></section>
+
+<footer><div class="wrap col">
+  <p><strong>Where to go next.</strong> Open your editor and write all four algorithms from a blank file — no notes, no scrolling back up. Then break one on purpose: remove the <code>+1</code> from <code>first = middle + 1</code> and watch your program hang. Understanding <em>why</em> it hangs is worth more than getting it right first time.</p>
+  <p class="mini">CFBC Computer Science &mdash; Lesson 2: Searching and Sorting.</p>
+</div></footer>
+</main>
+<script>
+(function(){
+"use strict";
+const $  = (s,r)=>(r||document).querySelector(s);
+const $$ = (s,r)=>[...(r||document).querySelectorAll(s)];
+const RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const say=(el,h)=>{ if(el) el.innerHTML=h; };
+const K=s=>`<span class="k">${s}</span>`, G=s=>`<span class="g">${s}</span>`,
+      R=s=>`<span class="r">${s}</span>`, Y=s=>`<span class="y">${s}</span>`;
+const sleep=ms=>new Promise(r=>setTimeout(r,RM?0:ms));
+
+/* ============================================================ NOTEBOOK CELLS */
+$$('[data-run]').forEach(btn=>{
+  const nb=btn.closest('.nb'), wrap=$('.nb-outwrap',nb), out=$('[data-out]',nb);
+  const full=out.innerHTML; let busy=false;
+  btn.addEventListener('click',async()=>{
+    if(busy) return;
+    if(wrap.classList.contains('show')){ wrap.classList.remove('show'); btn.textContent='Run cell'; return; }
+    busy=true; btn.textContent='Running…'; wrap.classList.add('show');
+    out.innerHTML='<span class="cursor"></span>';
+    await sleep(340);
+    out.innerHTML=full; btn.textContent='Clear output'; busy=false;
+  });
+});
+
+/* ============================================================ ARRAY RENDERER */
+/* st[i] = '' | 'cmp' | 'find' | 'swap' | 'done' | 'out' | 'hitgold'
+   ptr    = {i:'label'} shown above the cell                              */
+function arrHTML(vals,st,ptr,showIdx){
+  st=st||{}; ptr=ptr||{};
+  return '<div class="arr">'+vals.map((v,i)=>
+    `<div class="acol">
+       <div class="aptr ${(ptr[i]||'').split(':')[1]||''}">${(ptr[i]||'').split(':')[0]||''}</div>
+       <div class="acell ${st[i]||''}">${v}</div>
+       ${showIdx===false?'':`<div class="aidx">${i}</div>`}
+     </div>`).join('')+'</div>';
+}
+function barsHTML(vals,st,maxV){
+  const mx=maxV||Math.max(...vals,1);
+  return '<div class="bars">'+vals.map((v,i)=>
+    `<div class="bcol">
+       <div class="bar ${st[i]||''}" style="height:${Math.round(26+(v/mx)*120)}px">${v}</div>
+       <div class="blab">${i}</div>
+     </div>`).join('')+'</div>';
+}
+const LEGEND=`<div class="legend">
+  <span><i style="background:var(--cmp-s);border-color:var(--cmp)"></i>comparing</span>
+  <span><i style="background:var(--find-s);border-color:var(--find)"></i>smallest so far</span>
+  <span><i style="background:var(--swap-s);border-color:var(--swap)"></i>swapping</span>
+  <span><i style="background:var(--done-s);border-color:var(--done)"></i>locked in place</span></div>`;
+
+/* ============================================================ HERO */
+(function(){
+  const el=$('#heroStage'); if(!el) return;
+  const V=[40,11,8,7,9,24];
+  const frames=[
+    {st:{},cap:'six unsorted values'},
+    {st:{0:'cmp',1:'cmp'},cap:'comparing'},
+    {st:{0:'swap',1:'swap'},cap:'swapping'},
+    {st:{5:'done'},cap:'locked in place'},
+    {st:{2:'find'},cap:'the target'}
+  ];
+  let f=0;
+  const draw=()=>{ el.innerHTML=arrHTML(V,frames[f].st)+
+    `<div class="legend" style="margin-top:16px"><span><b>${frames[f].cap}</b></span></div>`; };
+  draw();
+  if(!RM) setInterval(()=>{ f=(f+1)%frames.length; draw(); },1500);
+})();
+
+/* ============================================================ generic fill-in */
+function fillLab(hostSel,html,answers,btns,outSel){
+  const host=$(hostSel), out=$(outSel); if(!host) return;
+  host.innerHTML=html;
+  const ins=$$('input',host);
+  const norm=s=>s.replace(/\s+/g,'').replace(/;+$/,'').toLowerCase();
+  $(btns.check).onclick=()=>{
+    let ok=0;
+    ins.forEach((inp,k)=>{
+      const good=answers[k].a.includes(norm(inp.value));
+      inp.classList.toggle('good',good);
+      inp.classList.toggle('bad',!good&&inp.value.trim()!=='');
+      if(good) ok++;
+    });
+    say(out, ok===ins.length
+      ? `${G('All '+ins.length+' correct.')} Now close the page and write the whole function from a blank file — that is the bit that sticks.`
+      : `${Y(ok+' of '+ins.length+' correct.')} Red boxes are wrong, empty ones are untouched. Try Hint if you're stuck on one.`);
+  };
+  $(btns.hint).onclick=()=>say(out,answers.map((b,k)=>`${K('blank '+(k+1))}  ${b.hint}`).join('\n'));
+  $(btns.reveal).onclick=()=>{
+    ins.forEach((i,k)=>{ i.value=answers[k].show; i.classList.add('good'); i.classList.remove('bad'); });
+    say(out,`${Y('Revealed.')} Reload the page and try it cold before you move on.`);
+  };
+}
+
+fillLab('#fillCount',
+`<span class="kw">int</span> countOccurrences(<span class="kw">int</span> arr[], <span class="kw">int</span> n, <span class="kw">int</span> target) {
+    <span class="kw">int</span> count = <input class="blank" style="width:6ch" placeholder="1">;
+
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; <input class="blank" style="width:6ch" placeholder="2">; i++) {
+        <span class="kw">if</span> (<input class="blank" placeholder="blank 3"> == target) {
+            <input class="blank" placeholder="blank 4">;
+        }
+    }
+    <span class="kw">return</span> count;    <span class="cm">// no break — we must check every element</span>
+}`,
+[{a:['0'],hint:'Nothing has been counted yet.',show:'0'},
+ {a:['n'],hint:'Keep going while i is less than the size.',show:'n'},
+ {a:['arr[i]'],hint:'The element at the current position.',show:'arr[i]'},
+ {a:['count++','count+=1','count=count+1'],hint:'Add one to the counter.',show:'count++'}],
+{check:'#countCheck',hint:'#countHint',reveal:'#countReveal'},'#countOut');
+
+fillLab('#fillBin',
+`<span class="kw">int</span> binarySearch(<span class="kw">int</span> arr[], <span class="kw">int</span> n, <span class="kw">int</span> target) {
+    <span class="kw">int</span> first = 0, last = <input class="blank" style="width:7ch" placeholder="1">;
+
+    <span class="kw">while</span> (first <input class="blank" style="width:5ch" placeholder="2"> last) {
+        <span class="kw">int</span> middle = (first + last) / <input class="blank" style="width:4ch" placeholder="3">;
+
+        <span class="kw">if</span>      (arr[middle] == target) <span class="kw">return</span> middle;
+        <span class="kw">else if</span> (arr[middle] &lt;  target) first = <input class="blank" placeholder="blank 4">;
+        <span class="kw">else</span>                           last  = <input class="blank" placeholder="blank 5">;
+    }
+    <span class="kw">return</span> -1;
+}`,
+[{a:['n-1'],hint:'The LAST valid index of an n-element array.',show:'n-1'},
+ {a:['<='],hint:'Keep looping while at least one element is still in play.',show:'<='},
+ {a:['2'],hint:'Cut the region in half.',show:'2'},
+ {a:['middle+1'],hint:'Move past the middle — it has already been checked.',show:'middle + 1'},
+ {a:['middle-1'],hint:'Move below the middle — it has already been checked.',show:'middle - 1'}],
+{check:'#binCheck',hint:'#binHint',reveal:'#binReveal'},'#binOut');
+
+fillLab('#fillSel',
+`<span class="kw">void</span> selectionSort(<span class="kw">int</span> arr[], <span class="kw">int</span> n) {
+    <span class="kw">int</span> position, swap;
+
+    <span class="kw">for</span> (<span class="kw">int</span> c = 0; c &lt; <input class="blank" style="width:7ch" placeholder="1">; c++) {
+        position = <input class="blank" style="width:5ch" placeholder="2">;
+
+        <span class="kw">for</span> (<span class="kw">int</span> d = <input class="blank" style="width:6ch" placeholder="3">; d &lt; n; d++)
+            <span class="kw">if</span> (arr[d] <input class="blank" style="width:4ch" placeholder="4"> arr[position]) position = d;
+
+        <span class="kw">if</span> (position != c) {
+            swap          = arr[c];
+            arr[c]        = arr[position];
+            arr[position] = <input class="blank" placeholder="blank 5">;
+        }
+    }
+}`,
+[{a:['n-1'],hint:'n-1 passes: the last element has nowhere else to go.',show:'n - 1'},
+ {a:['c'],hint:'Assume the front of the unsorted part is the smallest.',show:'c'},
+ {a:['c+1'],hint:'Start checking just AFTER the one you assumed.',show:'c + 1'},
+ {a:['<'],hint:'Ascending order — is this one smaller?',show:'<'},
+ {a:['swap'],hint:'Put the parked value back.',show:'swap'}],
+{check:'#selCheck',hint:'#selHint',reveal:'#selReveal'},'#selOut');
+
+/* ============================================================ LAB 1 — linear search */
+(function(){
+  const stage=$('#lsStage'), out=$('#lsOut'); if(!stage) return;
+  const V=[72,45,91,63,88,55,79,34];
+  let i=0, n=0, done=false, timer=null;
+  const target=()=>parseInt($('#lsTarget').value,10);
+  function draw(){
+    const st={},ptr={};
+    for(let k=0;k<i;k++) st[k]='out';
+    if(!done&&i<V.length){ st[i]='cmp'; ptr[i]='i:i'; }
+    if(done&&i<V.length&&V[i]===target()) st[i]='hitgold';
+    stage.innerHTML=arrHTML(V,st,ptr);
+    $('#lsN').textContent=n;
+  }
+  function reset(){ clearInterval(timer); i=0;n=0;done=false; $('#lsPos').textContent='—'; draw(); say(out,`Looking for ${K(target())}. Press Step.`); }
+  function step(){
+    if(done) return false;
+    if(i>=V.length){ done=true; $('#lsPos').textContent='-1'; draw();
+      say(out,`${R('Not found.')} Walked the whole array — ${n} comparisons, which is the ${Y('worst case')}: n comparisons for n elements.`); return false; }
+    n++;
+    if(V[i]===target()){ done=true; $('#lsPos').textContent=i; draw();
+      say(out,`${G('Found '+target()+' at index '+i+'.')}\nIt took ${G(n)} comparison${n===1?'':'s'} — one for every element up to and including this one.\n\nHad it been at the end, that would have been ${V.length}.`); return false; }
+    say(out,`Comparison ${n}: ${K('arr['+i+']')} is ${V[i]}, not ${target()}. Move on.`);
+    i++; draw(); return true;
+  }
+  $('#lsStep').onclick=step;
+  $('#lsReset').onclick=reset;
+  $('#lsAuto').onclick=()=>{ clearInterval(timer); if(done) reset(); timer=setInterval(()=>{ if(!step()) clearInterval(timer); },RM?1:420); };
+  $('#lsTarget').oninput=reset;
+  $$('[data-lst]').forEach(b=>b.onclick=()=>{ $('#lsTarget').value=b.dataset.lst; reset(); });
+  reset();
+})();
+
+/* ============================================================ LAB 2 — binary search */
+(function(){
+  const stage=$('#bsStage'), out=$('#bsOut'); if(!stage) return;
+  const V=[12,19,23,31,45,52,64,78,85,97];
+  let first=0,last=V.length-1,n=0,done=false,mid=null,timer=null;
+  const target=()=>parseInt($('#bsTarget').value,10);
+  function draw(){
+    const st={},ptr={};
+    V.forEach((_,k)=>{ if(k<first||k>last) st[k]='out'; });
+    if(mid!==null&&!done) st[mid]='cmp';
+    if(done&&mid!==null&&V[mid]===target()) st[mid]='hitgold';
+    if(!done){ if(first<=last){ ptr[first]=(first===last?'first+last:lo':'first:lo'); if(last!==first) ptr[last]='last:hi'; }
+      if(mid!==null&&mid!==first&&mid!==last) ptr[mid]='mid:mid'; }
+    stage.innerHTML=arrHTML(V,st,ptr);
+    $('#bsN').textContent=n;
+    $('#bsLeft').textContent=done?0:Math.max(0,last-first+1);
+  }
+  function reset(){ clearInterval(timer); first=0;last=V.length-1;n=0;done=false;mid=null;
+    $('#bsPos').textContent='—'; draw(); say(out,`Looking for ${K(target())} in 10 sorted values. Press Step.`); }
+  function step(){
+    if(done) return false;
+    if(first>last){ done=true; $('#bsPos').textContent='-1'; draw();
+      say(out,`${R('Not found.')} first (${first}) overtook last (${last}) — the region is empty.\nOnly ${n} comparisons were needed to rule out all 10 values.`); return false; }
+    mid=Math.floor((first+last)/2); n++;
+    const v=V[mid];
+    if(v===target()){ done=true; $('#bsPos').textContent=mid; draw();
+      say(out,`${G('Found '+target()+' at index '+mid+' in '+n+' comparison'+(n===1?'':'s')+'.')}\nLinear search would have needed ${Y(mid+1)}.`); return false; }
+    const before=last-first+1;
+    let msg;
+    if(v<target()){ msg=`Comparison ${n}: middle is index ${mid} (${v}). ${v} ${R('<')} ${target()}, so everything from ${first} to ${mid} is too small — ${R('discard '+(mid-first+1)+' values')}.`; first=mid+1; }
+    else          { msg=`Comparison ${n}: middle is index ${mid} (${v}). ${v} ${R('>')} ${target()}, so everything from ${mid} to ${last} is too big — ${R('discard '+(last-mid+1)+' values')}.`; last=mid-1; }
+    draw();
+    say(out,`${msg}\nStill in play: ${G(Math.max(0,last-first+1))} of ${before}.`);
+    return true;
+  }
+  $('#bsStep').onclick=step;
+  $('#bsReset').onclick=reset;
+  $('#bsAuto').onclick=()=>{ clearInterval(timer); if(done) reset(); timer=setInterval(()=>{ if(!step()) clearInterval(timer); },RM?1:760); };
+  $('#bsTarget').oninput=reset;
+  $$('[data-bst]').forEach(b=>b.onclick=()=>{ $('#bsTarget').value=b.dataset.bst; reset(); });
+  reset();
+})();
+
+/* ============================================================ LAB 3 — the race */
+(function(){
+  const L=$('#raceL'), B=$('#raceB'), out=$('#raceOut'); if(!L) return;
+  const V=Array.from({length:32},(_,i)=>(i+1)*3);   // 3,6,...,96 sorted
+  let timers=[];
+  const clearT=()=>{ timers.forEach(clearTimeout); timers=[]; };
+  function mini(host,st){ host.innerHTML='<div class="arr" style="gap:3px">'+V.map((v,i)=>
+    `<div class="acell" style="width:17px;height:30px;font-size:0;border-width:1.5px;${st[i]==='cmp'?'background:var(--cmp-s);border-color:var(--cmp)':st[i]==='out'?'background:var(--out-s);border-color:var(--out);opacity:.45':st[i]==='hit'?'background:var(--done);border-color:var(--done)':''}"></div>`).join('')+'</div>'; }
+  function reset(){ clearT(); mini(L,{}); mini(B,{}); $('#raceLN').textContent='0'; $('#raceBN').textContent='0';
+    say(out,'Pick a position and race them. Try 31 — the very last value.'); }
+  $('#raceReset').onclick=reset;
+  $('#raceRun').onclick=()=>{
+    clearT();
+    let idx=parseInt($('#raceIdx').value,10);
+    if(isNaN(idx)||idx<0||idx>31){ say(out,`${Y('Enter a position from 0 to 31.')}`); return; }
+    const target=V[idx], d=RM?0:90;
+    // linear
+    const lst={};
+    for(let k=0;k<=idx;k++) timers.push(setTimeout(()=>{
+      if(k>0) lst[k-1]='out'; lst[k]= (k===idx)?'hit':'cmp'; mini(L,lst); $('#raceLN').textContent=k+1;
+    },d*k));
+    // binary
+    let f=0,l=31,c=0; const steps=[];
+    while(f<=l){ const m=Math.floor((f+l)/2); c++; steps.push({m,f,l,hit:V[m]===target});
+      if(V[m]===target) break; else if(V[m]<target) f=m+1; else l=m-1; }
+    const bst={};
+    steps.forEach((s,k)=>timers.push(setTimeout(()=>{
+      V.forEach((_,q)=>{ if(q<s.f||q>s.l) bst[q]='out'; });
+      bst[s.m]=s.hit?'hit':'cmp'; mini(B,bst); $('#raceBN').textContent=k+1;
+    },d*k*3)));
+    timers.push(setTimeout(()=>{
+      const lc=idx+1, bc=steps.length;
+      say(out,`Target ${K(target)} at index ${idx}.\n\n${R('Linear: '+lc+' comparisons')}   ${G('Binary: '+bc+' comparisons')}\n\nBinary was ${G((lc/bc).toFixed(1)+'x')} faster here. On 32 values binary never needs more than ${Y('6')} comparisons — no matter where the target hides.`);
+    },d*Math.max(idx+1,steps.length*3)+200));
+  };
+  reset();
+})();
+
+/* ============================================================ DRAG & DROP */
+function initDnD(root){
+  const pool=$('[data-pool]',root), slots=$$('.dropslot',root);
+  function addX(chip){
+    if($('.x',chip)) return;
+    const b=document.createElement('button');
+    b.className='x'; b.type='button'; b.textContent='\u2715';
+    b.setAttribute('aria-label','Return this statement to the pool');
+    b.addEventListener('click',e=>{ e.stopPropagation(); toPool(chip); });
+    chip.appendChild(b);
+  }
+  function toPool(c){ const x=$('.x',c); if(x)x.remove(); pool.appendChild(c); marks(); }
+  function marks(){ slots.forEach(s=>s.classList.remove('right','wrong')); }
+  function place(c,s){ const cur=$('.chip',s); if(cur&&cur!==c) toPool(cur); s.appendChild(c); addX(c); marks(); }
+  $$('.chip',root).forEach(c=>{ c.tabIndex=0; wire(c); });
+  function wire(c){
+    c.addEventListener('dragstart',e=>{ e.dataTransfer.setData('text/plain',c.dataset.id); c.classList.add('dragging'); });
+    c.addEventListener('dragend',()=>c.classList.remove('dragging'));
+    c.addEventListener('keydown',e=>{
+      if(e.key!=='Enter'&&e.key!==' ') return; e.preventDefault();
+      if(c.parentElement.classList.contains('dropslot')) toPool(c);
+      else { const f=slots.find(s=>!$('.chip',s)); if(f){ place(c,f); c.focus(); } }
+    });
+    let ghost=null,ox=0,oy=0;
+    c.addEventListener('touchstart',e=>{
+      if(e.target.classList.contains('x')) return;
+      const t=e.touches[0], r=c.getBoundingClientRect();
+      ox=t.clientX-r.left; oy=t.clientY-r.top;
+      ghost=c.cloneNode(true); ghost.classList.add('floatdrag');
+      ghost.style.width=r.width+'px'; ghost.style.left=r.left+'px'; ghost.style.top=r.top+'px';
+      document.body.appendChild(ghost); c.classList.add('dragging');
+    },{passive:true});
+    c.addEventListener('touchmove',e=>{
+      if(!ghost) return; e.preventDefault();
+      const t=e.touches[0];
+      ghost.style.left=(t.clientX-ox)+'px'; ghost.style.top=(t.clientY-oy)+'px';
+      const el=document.elementFromPoint(t.clientX,t.clientY);
+      slots.forEach(s=>s.classList.toggle('over',!!el&&s.contains(el)));
+    },{passive:false});
+    c.addEventListener('touchend',e=>{
+      if(!ghost) return;
+      const t=e.changedTouches[0], el=document.elementFromPoint(t.clientX,t.clientY);
+      ghost.remove(); ghost=null; c.classList.remove('dragging');
+      slots.forEach(s=>s.classList.remove('over'));
+      const slot=el&&el.closest?el.closest('.dropslot'):null;
+      if(slot) place(c,slot); else if(el&&el.closest&&el.closest('[data-pool]')) toPool(c);
+    });
+  }
+  slots.concat([pool]).forEach(z=>{
+    z.addEventListener('dragover',e=>{ e.preventDefault(); if(z.classList.contains('dropslot')) z.classList.add('over'); });
+    z.addEventListener('dragleave',()=>z.classList.remove('over'));
+    z.addEventListener('drop',e=>{
+      e.preventDefault(); z.classList.remove('over');
+      const c=$(`.chip[data-id="${e.dataTransfer.getData('text/plain')}"]`,root); if(!c) return;
+      if(z.classList.contains('dropslot')) place(c,z); else toPool(c);
+    });
+  });
+  return { order:()=>slots.map(s=>{const c=$('.chip',s);return c?c.dataset.id:null;}),
+           mark:a=>slots.forEach((s,i)=>{const c=$('.chip',s); if(!c)return;
+             s.classList.toggle('right',c.dataset.id===a[i]); s.classList.toggle('wrong',c.dataset.id!==a[i]);}),
+           reset:()=>{ $$('.chip',root).forEach(toPool); marks(); } };
+}
+
+/* ============================================================ YOUR TURN 3 — swap order */
+(function(){
+  const root=$('[data-order-game="swapOrder"]'); if(!root) return;
+  const dnd=initDnD(root), stage=$('#swStage'), out=$('#swOut');
+  const A=5, B=9;
+  const show=(a,b,t,lab)=>`<div style="text-align:center;font-family:var(--ui);font-size:12px;color:var(--ink3);margin-bottom:8px">${lab}</div>`+
+    arrHTML([a,b,t===null?'?':t],{2:'find'},{0:'arr[j]:mid',1:'arr[j+1]:mid',2:'temp:i'},false);
+  function reset(){ stage.innerHTML=show(A,B,null,'starting values'); say(out,'Place all three, then run.'); }
+  $('#swReset').onclick=()=>{ dnd.reset(); reset(); };
+  $('#swRun').onclick=()=>{
+    const o=dnd.order();
+    if(o.includes(null)){ say(out,`${Y('Fill all three slots first.')}`); return; }
+    dnd.mark(['a','b','c']);
+    // simulate
+    let a=A,b=B,t=null; const log=[];
+    o.forEach(id=>{
+      if(id==='a'){ t=a; log.push(`${K('temp = arr[j]')}      temp is now ${t}`); }
+      if(id==='b'){ a=b; log.push(`${K('arr[j] = arr[j+1]')}  arr[j] is now ${a}`); }
+      if(id==='c'){ b=(t===null?'?':t); log.push(`${K('arr[j+1] = temp')}    arr[j+1] is now ${b}`); }
+    });
+    stage.innerHTML=show(a,b,t===null?null:t,'after your three statements');
+    const win=(a===B&&b===A);
+    say(out, win
+      ? `${G('Correct — the values swapped cleanly.')}\n\n${log.join('\n')}\n\narr[j]=${a}, arr[j+1]=${b}. Both original values survived because ${Y('temp held a copy')} before anything was overwritten.`
+      : `${R('The data got destroyed.')}\n\n${log.join('\n')}\n\narr[j]=${a}, arr[j+1]=${b}. ${R('The value '+(a===b?A:'that was overwritten')+' is gone.')}\n\nThe rule, same as with pointers last lesson: ${Y('never overwrite a value until a copy exists somewhere else.')} temp must be filled FIRST.`);
+  };
+  reset();
+})();
+
+/* ============================================================ SORT ENGINES (step generators) */
+function bubbleSteps(a){
+  const arr=[...a], S=[], n=arr.length; let cmp=0,swp=0,pass=0;
+  for(let i=0;i<n-1;i++){
+    pass++; let swapped=false;
+    for(let j=0;j<n-i-1;j++){
+      cmp++;
+      S.push({arr:[...arr],st:mark({[j]:'cmp',[j+1]:'cmp'},n,i),cmp,swp,pass,
+        msg:`Pass ${pass}: compare ${K('arr['+j+']')}=${arr[j]} with ${K('arr['+(j+1)+']')}=${arr[j+1]} — ${arr[j]>arr[j+1]?R('out of order, swap'):G('already fine, leave them')}`});
+      if(arr[j]>arr[j+1]){
+        const t=arr[j]; arr[j]=arr[j+1]; arr[j+1]=t; swp++; swapped=true;
+        S.push({arr:[...arr],st:mark({[j]:'swap',[j+1]:'swap'},n,i),cmp,swp,pass,
+          msg:`${R('Swapped.')} ${arr[j+1]} moved right, ${arr[j]} moved left. Swaps so far: ${swp}`});
+      }
+    }
+    S.push({arr:[...arr],st:mark({},n,i+1),cmp,swp,pass,
+      msg:`${G('End of pass '+pass+'.')} ${arr[n-i-1]} is now locked in its final place. ${i+1} value${i?'s':''} sorted, ${n-i-1} to go.`});
+    if(!swapped){ S.push({arr:[...arr],st:mark({},n,n),cmp,swp,pass,done:true,
+      msg:`${G('No swaps in that whole pass — the array is already sorted.')} With the swapped-flag optimisation we stop right here. Total: ${cmp} comparisons, ${swp} swaps.`}); return S; }
+  }
+  S.push({arr:[...arr],st:mark({},n,n),cmp,swp,pass,done:true,
+    msg:`${G('Sorted.')} ${cmp} comparisons, ${swp} swaps, ${pass} passes.`});
+  return S;
+  function mark(base,n,sortedFromRight){ const st={...base}; for(let k=n-sortedFromRight;k<n;k++) st[k]='done'; return st; }
+}
+function selectionSteps(a){
+  const arr=[...a], S=[], n=arr.length; let cmp=0,swp=0,pass=0;
+  const lock=c=>{ const st={}; for(let k=0;k<c;k++) st[k]='done'; return st; };
+  for(let c=0;c<n-1;c++){
+    pass++; let pos=c;
+    S.push({arr:[...arr],st:{...lock(c),[pos]:'min'},cmp,swp,pass,
+      msg:`Pass ${pass}: assume ${K('arr['+c+']')}=${arr[c]} is the smallest of what's left.`});
+    for(let d=c+1;d<n;d++){
+      cmp++;
+      S.push({arr:[...arr],st:{...lock(c),[pos]:'min',[d]:'cmp'},cmp,swp,pass,
+        msg:`Compare ${arr[d]} with the smallest so far (${arr[pos]}) — ${arr[d]<arr[pos]?Y('smaller! new minimum'):G('no, keep going')}`});
+      if(arr[d]<arr[pos]) pos=d;
+    }
+    if(pos!==c){
+      const t=arr[c]; arr[c]=arr[pos]; arr[pos]=t; swp++;
+      S.push({arr:[...arr],st:{...lock(c),[c]:'swap',[pos]:'swap'},cmp,swp,pass,
+        msg:`${R('One swap.')} Smallest (${arr[c]}) moves to index ${c}. Swaps so far: ${swp} — bubble sort would have made several by now.`});
+    } else {
+      S.push({arr:[...arr],st:{...lock(c),[c]:'done'},cmp,swp,pass,
+        msg:`${G('Already in place')} — the smallest was already at index ${c}, so ${Y('no swap needed')}.`});
+    }
+    S.push({arr:[...arr],st:lock(c+1),cmp,swp,pass,
+      msg:`${G('End of pass '+pass+'.')} Index ${c} is locked. The sorted region grows from the ${Y('left')}.`});
+  }
+  S.push({arr:[...arr],st:lock(n),cmp,swp,pass,done:true,
+    msg:`${G('Sorted.')} ${cmp} comparisons, ${swp} swaps, ${pass} passes — always n-1 passes, whatever the data.`});
+  return S;
+}
+
+/* generic sort lab wiring */
+function sortLab(o){
+  const stage=$(o.stage), out=$(o.out); if(!stage) return;
+  let data=[...o.data], S=o.gen(data), k=-1, timer=null;
+  function render(){
+    const f = k<0 ? {arr:data,st:{},cmp:0,swp:0,pass:0,msg:o.intro} : S[k];
+    stage.innerHTML=barsHTML(f.arr,f.st)+LEGEND;
+    $(o.p).textContent=f.pass||0; $(o.c).textContent=f.cmp||0; $(o.s).textContent=f.swp||0;
+    say(out,f.msg);
+  }
+  function step(){ if(k>=S.length-1) return false; k++; render(); return k<S.length-1; }
+  function reset(){ clearInterval(timer); S=o.gen(data); k=-1; render(); }
+  $(o.step).onclick=step;
+  $(o.reset).onclick=reset;
+  $(o.auto).onclick=()=>{ clearInterval(timer); if(k>=S.length-1) reset();
+    timer=setInterval(()=>{ if(!step()) clearInterval(timer); },RM?1:330); };
+  if(o.pass) $(o.pass).onclick=()=>{ clearInterval(timer);
+    const start=k<0?0:(S[k].pass||0);
+    timer=setInterval(()=>{ const more=step(); if(!more||(S[k]&&S[k].pass>start)) clearInterval(timer); },RM?1:150); };
+  if(o.shuffle) $(o.shuffle).onclick=()=>{
+    data=Array.from({length:o.data.length},()=>Math.floor(Math.random()*90)+8); reset(); };
+  reset();
+  return { setData:d=>{ data=[...d]; reset(); } };
+}
+
+const bbLab=sortLab({data:[40,11,91,7,24,63],gen:bubbleSteps,stage:'#bbStage',out:'#bbOut',
+  p:'#bbP',c:'#bbC',s:'#bbS',step:'#bbStep',auto:'#bbAuto',reset:'#bbReset',pass:'#bbPass',shuffle:'#bbShuffle',
+  intro:'Press Step to begin. Blue = comparing, red = swapping, green = locked in place.'});
+const ssLab=sortLab({data:[40,11,91,7,24,63],gen:selectionSteps,stage:'#ssStage',out:'#ssOut',
+  p:'#ssP',c:'#ssC',s:'#ssS',step:'#ssStep',auto:'#ssAuto',reset:'#ssReset',pass:'#ssPass',shuffle:'#ssShuffle',
+  intro:'Press Step to begin. Amber = smallest found so far, blue = being compared against it.'});
+
+/* ============================================================ LAB 6 — duel */
+(function(){
+  const bS=$('#duelB'), sS=$('#duelS'), out=$('#duelOut'); if(!bS) return;
+  let data=[40,11,91,7,24,63], timer=null;
+  function render(host,f,pre,suf){ host.innerHTML=barsHTML(f.arr,f.st); $(pre).textContent=f.cmp||0; $(suf).textContent=f.swp||0; }
+  function reset(){
+    clearInterval(timer);
+    render(bS,{arr:data,st:{},cmp:0,swp:0},'#duelBC','#duelBS');
+    render(sS,{arr:data,st:{},cmp:0,swp:0},'#duelSC','#duelSS');
+    say(out,'Press Run both. Then try it with already-sorted data and compare the comparison counts.');
+  }
+  $('#duelReset').onclick=reset;
+  $('#duelShuffle').onclick=()=>{ data=Array.from({length:6},()=>Math.floor(Math.random()*90)+8); reset(); };
+  $('#duelSorted').onclick=()=>{ data=[7,11,24,40,63,91]; reset(); say(out,`${Y('Already-sorted data loaded.')} Now press Run both and watch what bubble sort does that selection sort cannot.`); };
+  $('#duelRun').onclick=()=>{
+    clearInterval(timer);
+    const B=bubbleSteps(data), S=selectionSteps(data); let i=0;
+    timer=setInterval(()=>{
+      if(i<B.length) render(bS,B[i],'#duelBC','#duelBS');
+      if(i<S.length) render(sS,S[i],'#duelSC','#duelSS');
+      i++;
+      if(i>=Math.max(B.length,S.length)){
+        clearInterval(timer);
+        const b=B[B.length-1], s=S[S.length-1];
+        const sortedInput=data.every((v,k)=>k===0||data[k-1]<=v);
+        say(out,`${K('Bubble')}    ${b.cmp} comparisons, ${G(b.swp)} swaps, ${b.pass} passes\n${K('Selection')} ${s.cmp} comparisons, ${G(s.swp)} swaps, ${s.pass} passes\n\n`+
+          (sortedInput
+            ? `${G('This is the case that separates them.')} The data was already sorted, so bubble sort's swapped-flag spotted it after ${Y('one pass')} and stopped. Selection sort has no such escape — it still ran all ${s.pass} passes and made all ${s.cmp} comparisons, because it cannot know the data is sorted without checking.`
+            : `Selection sort made ${G(s.swp)} swaps versus bubble's ${R(b.swp)}. It never makes more than n-1, because it looks first and moves once. If each item were a whole student record instead of a number, that difference would matter a great deal.`));
+      }
+    },RM?1:150);
+  };
+  reset();
+})();
+
+/* ============================================================ RAND — bubble passes */
+(function(){
+  const host=$('#randPasses'), out=$('#randOut'); if(!host) return;
+  const START=[40,11,8,7,9,24];
+  // compute pass-by-pass snapshots
+  const snaps=[]; { const a=[...START],n=6;
+    for(let i=0;i<n-1;i++){ let sw=0;
+      for(let j=0;j<n-i-1;j++) if(a[j]>a[j+1]){ const t=a[j];a[j]=a[j+1];a[j+1]=t; sw++; }
+      snaps.push({arr:[...a],locked:i+1,swaps:sw}); } }
+  let shown=0;
+  function draw(){
+    host.innerHTML=`<table class="trace"><tr><th>Pass</th>${START.map((_,i)=>`<th>[${i}]</th>`).join('')}<th>swaps</th></tr>`+
+      `<tr class="hl"><td><b>start</b></td>${START.map(v=>`<td>${v}</td>`).join('')}<td>—</td></tr>`+
+      snaps.map((s,k)=>k<shown
+        ? `<tr><td><b>${k+1}</b></td>${s.arr.map((v,i)=>`<td style="${i>=6-s.locked?'background:var(--done-s);font-weight:700;color:var(--done)':''}">${v}</td>`).join('')}<td>${s.swaps}</td></tr>`
+        : `<tr><td><b>${k+1}</b></td>${START.map(()=>'<td style="color:var(--grid)">?</td>').join('')}<td style="color:var(--grid)">?</td></tr>`).join('')+'</table>';
+    $('#randNext').disabled=shown>=snaps.length;
+    $('#randNext').textContent=shown>=snaps.length?'All passes revealed':'Reveal next pass';
+  }
+  $('#randNext').onclick=()=>{
+    if(shown>=snaps.length) return;
+    shown++; draw();
+    const s=snaps[shown-1];
+    if(shown<snaps.length) say(out,`${G('Pass '+shown+':')} ${s.arr.join(' ')}  (${s.swaps} swap${s.swaps===1?'':'s'})\nThe green values are locked — the largest ${shown} have settled at the right. Now predict pass ${shown+1}.`);
+    else {
+      const lastSwap = snaps.reduce((acc,x,k)=>x.swaps>0?k+1:acc,0);
+      const firstZero = snaps.findIndex(x=>x.swaps===0)+1;
+      say(out,`${G('Fully sorted: '+snaps[snaps.length-1].arr.join(' ')+'.')}
+
+Look at the swaps column: the last pass that actually moved anything was ${G('pass '+lastSwap)}, so the array was ${Y('already sorted after pass '+lastSwap)}. Pass ${firstZero} made ${G('0 swaps')} — exactly what the swapped flag watches for, and a bubble sort using it would stop right there.
+
+So the honest answer is ${Y(lastSwap+' passes')} to sort it, ${Y(firstZero)} to know it is sorted, and ${Y(snaps.length)} if you blindly apply n-1.`);
+    }
+  };
+  $('#randReset').onclick=()=>{ shown=0; draw(); say(out,'Predict pass 1, then reveal.'); };
+  draw();
+})();
+
+/* ============================================================ RAND — the binary search trap */
+(function(){
+  const stage=$('#trapStage'), out=$('#trapOut'); if(!stage) return;
+  const V=[40,11,8,7,9,24];
+  let TGT=9, first=0,last=5,n=0,done=false,mid=null;
+  const realIdx=()=>V.indexOf(TGT);
+  function draw(){
+    const st={},ptr={};
+    V.forEach((_,k)=>{ if(k<first||k>last) st[k]='out'; });
+    if(mid!==null&&!done) st[mid]='cmp';
+    if(!done&&first<=last){ ptr[first]='first:lo'; if(last!==first) ptr[last]='last:hi'; }
+    if(done) st[realIdx()] = (mid!==null&&V[mid]===TGT) ? 'hitgold' : 'find';
+    stage.innerHTML=arrHTML(V,st,ptr);
+  }
+  function reset(){ first=0;last=5;n=0;done=false;mid=null; draw();
+    $('#trapStep').disabled=false; $('#trapStep').textContent='Step';
+    say(out,`Searching for ${K(TGT)} in ${K('40 11 8 7 9 24')} — which is ${R('not sorted')}.\nIt is really sitting at index ${G(realIdx())}. Press Step.`); }
+  $('#trapStep').onclick=()=>{
+    if(done) return;
+    if(first>last){
+      done=true; draw(); $('#trapStep').disabled=true; $('#trapStep').textContent='Finished';
+      say(out,`${R('Returned -1: "'+TGT+' is not in the array."')}\n\nBut look at index ${G(realIdx())}. ${G(TGT+' is right there.')}\n\nThe algorithm never even looked at it — it threw that region away on a promise the unsorted data could not keep. ${Y('No crash, no warning, just a confident wrong answer.')} That is what makes this bug dangerous.`);
+      return;
+    }
+    mid=Math.floor((first+last)/2); n++;
+    const v=V[mid];
+    if(v===TGT){
+      done=true; draw(); $('#trapStep').disabled=true; $('#trapStep').textContent='Finished';
+      const lucky = V.slice(0,mid).some(x=>x>v);
+      say(out,`${G('Found '+TGT+' at index '+mid+' in '+n+' comparison'+(n===1?'':'s')+'.')}\n\n`+
+        (lucky
+          ? `${Y('But this is luck, not correctness.')}\nOn the way it discarded a region while assuming everything in it was smaller. Index 0 holds ${R('40')} and index 1 holds ${R('11')} — both bigger than 8. The assumption was false and the right answer fell out anyway.\n\nNot convinced? Press ${K('40')} above. It is at index 0, in plain sight, and binary search will tell you it does not exist.`
+          : `Here the discarded region happened to be genuinely smaller, so nothing went wrong this time. Press ${K('40')} or ${K('11')} to watch it break.`));
+      return;
+    }
+    let msg;
+    if(v<TGT){
+      const bad=V.slice(first,mid).filter(x=>x>v);
+      msg=`Comparison ${n}: middle is index ${mid} (${v}). ${v} < ${TGT}, so binary search assumes ${R('everything left of here is smaller')} and discards indexes ${first}–${mid}.`+
+        (bad.length?`\n\n${Y('But that region holds '+bad.join(' and ')+' — bigger than '+v+'. The assumption is false.')}`:'');
+      first=mid+1;
+    } else {
+      const lost = realIdx()>=mid && realIdx()<=last;
+      msg=`Comparison ${n}: middle is index ${mid} (${v}). ${v} > ${TGT}, so it discards indexes ${mid}–${last}`+
+        (lost?` — ${R('including index '+realIdx()+', where '+TGT+' actually lives.')}`:'.');
+      last=mid-1;
+    }
+    draw(); say(out,msg);
+  };
+  $('#trapReset').onclick=reset;
+  $$('[data-trap]').forEach(b=>b.onclick=()=>{
+    $$('[data-trap]').forEach(o=>{ o.classList.remove('amber'); o.classList.add('ghost'); });
+    b.classList.remove('ghost'); b.classList.add('amber');
+    TGT=parseInt(b.dataset.trap,10); reset();
+  });
+  reset();
+})();
+
+/* ============================================================ MCQ (shuffled options) */
+function renderMCQ(host,rawQs,onAnswer){
+  if(!host) return;
+  const qs=rawQs.map(q=>{
+    const idx=q.c.map((_,i)=>i);
+    for(let i=idx.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=idx[i]; idx[i]=idx[j]; idx[j]=t; }
+    return {q:q.q,e:q.e,c:idx.map(k=>q.c[k]),a:idx.indexOf(q.a)};
+  });
+  host.innerHTML=qs.map((q,i)=>`
+    <div class="q" data-q="${i}">
+      <div class="qt">${i+1}. ${q.q}</div>
+      ${q.c.map((c,j)=>`<div class="opt" data-o="${j}"><span class="mk">${'ABCD'[j]}</span><span>${c}</span></div>`).join('')}
+      <div class="fb"></div>
+    </div>`).join('');
+  $$('.q',host).forEach((qEl,i)=>{
+    const q=qs[i], fb=$('.fb',qEl);
+    $$('.opt',qEl).forEach(o=>o.addEventListener('click',()=>{
+      if(qEl.dataset.locked) return; qEl.dataset.locked='1';
+      const j=+o.dataset.o, right=j===q.a;
+      $$('.opt',qEl).forEach((x,k)=>{ if(k===q.a) x.classList.add('right'); else if(k===j) x.classList.add('wrong'); });
+      fb.className='fb show '+(right?'good':'bad');
+      fb.innerHTML=(right?'<b class="tick">\u2713 Correct. </b>':'<b>Not quite. </b>')+q.e;
+      if(onAnswer) onAnswer(right);
+    }));
+  });
+}
+
+/* ---- LAB 7 debug the book ---- */
+renderMCQ($('#bugQuiz'),[
+ {q:'The <code>if</code> tests <code>array[d] &gt; array[d+1]</code>, but the loop counter is <code>j</code>. What happens?',
+  c:['It works — d and j mean the same thing','It fails to compile: <code>d</code> was never declared or given a value','It sorts in descending order','It sorts only the first half'],a:1,
+  e:'C has no idea what <code>d</code> is. The compiler stops with "\u2018d\u2019 undeclared". Even if <code>d</code> existed, it would never change inside the loop, so the same pair would be tested every time while the swap moved <i>different</i> elements — total nonsense. It must be <code>array[j] &gt; array[j+1]</code>.'},
+ {q:'Look at the input loop: <code>for (i = 0; i &lt; n; i++) scanf(...)</code> with no braces, immediately followed by the sorting loops. What is wrong?',
+  c:['Nothing — braces are optional','The missing braces put the sorting loops INSIDE the input loop, so it sorts after every number typed','scanf cannot be used in a loop','The loop should start at 1'],a:1,
+  e:'Without braces a <code>for</code> loop owns only the <b>next single statement</b>. In the original layout the indentation suggests the sort is separate, but indentation means nothing to C. The fix is braces around the scanf loop. This is why you should always use braces, even for one line.'},
+ {q:'The final print loop uses <code>for (c = 0; c &lt; n; c++)</code>. What is the problem?',
+  c:['<code>c</code> is never declared — another compile error','You cannot print inside a loop','It should print backwards','n should be n-1'],a:0,
+  e:'The variables declared were <code>n, i, j, temp</code>. There is no <code>c</code>. Reuse <code>i</code>, or declare <code>c</code> alongside the others. Two undeclared variables in one short function is a strong hint the code was assembled from two different sources.'},
+ {q:'What is the single most useful habit when a program produces twenty compiler errors?',
+  c:['Fix the last error first','Fix the first error, then recompile','Rewrite the whole program','Ignore warnings and run it anyway'],a:1,
+  e:'One missing brace or undeclared variable throws the compiler off, and every error after it is usually imaginary. Fix the first, recompile, and watch most of the others vanish. Working bottom-up wastes hours.'}
+]);
+
+/* ============================================================ SELF-CHECK — 30 */
+(function(){
+  const host=$('#quizHost'), score=$('#quizScore'); if(!host) return;
+  let done=0,right=0;
+  renderMCQ(host,[
+  /* --- linear search --- */
+  {q:'Which search algorithm works on data in <b>any</b> order?',c:['Binary search','Linear search','Both','Neither'],a:1,
+   e:'Linear search just checks every element in turn, so order is irrelevant. Binary search depends entirely on the data being sorted.'},
+  {q:'What does a search function usually return when the value is not found?',c:['0','-1','The array size','Nothing'],a:1,
+   e:'&minus;1 can never be a real array index, so it cannot be confused with a genuine position. Returning 0 would be ambiguous — index 0 is a valid answer. This is called a sentinel value.'},
+  {q:'Linear search for 55 in {72, 45, 91, 63, 88, 55, 79}. How many comparisons?',c:['5','6','7','1'],a:1,
+   e:'Check 72, 45, 91, 63, 88, then 55 — that is the 6th comparison, at index 5. Remember indexes start at 0, so the count is always index + 1.'},
+  {q:'Worst case for linear search on 500 items?',c:['250 comparisons','500 comparisons','9 comparisons','1 comparison'],a:1,
+   e:'The worst case is the value being last or absent entirely, meaning every element gets checked: n comparisons for n items. 250 would be the average case.'},
+  {q:'What is the <b>best</b> case for linear search?',c:['The value is last','The value is first — 1 comparison','The value is missing','The data is sorted'],a:1,
+   e:'If the target sits at index 0 the very first comparison succeeds. Best case O(1), worst case O(n) — a big spread, which is why average-case reasoning matters for linear search.'},
+  {q:'Why does linear search use <code>break</code> (or <code>return</code>) when it finds a match?',
+   c:['To avoid a compiler error','To stop doing pointless work once the answer is known','Because C requires it','To reset the loop counter'],a:1,
+   e:'Without it the loop keeps checking the remaining elements even though the answer is already known. It still gives the right answer, just slower — and in an exam it shows you have not thought about efficiency.'},
+  {q:'You must search a list <b>once</b>, and it is unsorted. Best choice?',
+   c:['Sort it, then binary search','Linear search','Bubble sort it first','Binary search directly'],a:1,
+   e:'Sorting costs far more than a single linear pass. Sorting only pays off when you will search the same data many times.'},
+  /* --- binary search --- */
+  {q:'What must be true before binary search can be used?',c:['The array must be sorted','The array must be small','The array must contain no duplicates','The array must be an int array'],a:0,
+   e:'Everything depends on being able to discard half the data unseen, which is only safe if the order guarantees what is in that half.'},
+  {q:'In C, what does <code>(0 + 9) / 2</code> evaluate to?',c:['4.5','5','4','It is an error'],a:2,
+   e:'Integer division throws away the fractional part — it does not round. 4.5 becomes 4. That is fine for binary search; it just picks the left-of-centre element.'},
+  {q:'Binary search examines the middle and it is <b>smaller</b> than the target. What happens?',
+   c:['<code>last = middle - 1</code>','<code>first = middle + 1</code>','<code>first = 0</code>','The search ends'],a:1,
+   e:'If the middle is too small then it and everything left of it are too small, so the region moves right. The <code>+1</code> excludes the middle, which has already been checked.'},
+  {q:'Why <code>middle + 1</code> rather than just <code>middle</code>?',
+   c:['To skip a duplicate','Because the middle was already checked, and leaving it in causes an infinite loop','To avoid going out of bounds','It makes no difference'],a:1,
+   e:'Every comparison must make the region strictly smaller. With <code>first = middle</code>, a two-element region stops shrinking and the program hangs with no error at all.'},
+  {q:'What does the condition <code>while (first &lt;= last)</code> mean?',
+   c:['Keep going while at least one element is still in play','Keep going while the array is sorted','Keep going n times','Keep going until the middle is found'],a:0,
+   e:'When <code>first</code> overtakes <code>last</code>, the region is empty — every element has been ruled out and the target is not present.'},
+  {q:'Binary search for 78 in {12,19,23,31,45,52,64,78,85,97}. How many comparisons?',c:['1','2','3','4'],a:1,
+   e:'Step 1: middle is index 4 (45); 78 is bigger, go right. Step 2: middle of 5\u20139 is index 7, which holds 78. Found in 2.'},
+  {q:'Worst case for binary search on 1,000 items?',c:['About 1,000','About 500','About 10','About 100'],a:2,
+   e:'Halving 1,000 repeatedly reaches 1 in about 10 steps, because 2^10 = 1024. That is O(log n) — and 1,000,000 items would need only about 20.'},
+  {q:'You run binary search on <b>unsorted</b> data. What is the most likely outcome?',
+   c:['It crashes','It returns -1 for values that are actually present','It sorts the data first','It is slower but still correct'],a:1,
+   e:'No crash and no warning. It discards regions based on an order that does not hold, so it reports "not found" for values you can see with your own eyes. A silent wrong answer is far more dangerous than a crash.'},
+  {q:'A million-name phone book. Roughly how many binary search steps to find one name?',c:['About 20','About 1,000','About 500,000','About 1,000,000'],a:0,
+   e:'2^20 is just over a million, so about 20 halvings. Linear search would average 500,000 checks. This gap is why sorted data is worth the effort.'},
+  /* --- sorting general + swap --- */
+  {q:'Why does swapping two variables need a third, temporary variable?',
+   c:['To make the code readable','Because the first assignment destroys one value before it can be copied','Because C forbids double assignment','It does not — two lines are enough'],a:1,
+   e:'<code>a = b</code> overwrites a immediately, so the old a is gone and <code>b = a</code> just copies b onto itself. Save a copy in temp first.'},
+  {q:'Which order correctly swaps <code>arr[j]</code> and <code>arr[j+1]</code>?',
+   c:['<code>arr[j]=arr[j+1]; temp=arr[j]; arr[j+1]=temp;</code>','<code>temp=arr[j]; arr[j]=arr[j+1]; arr[j+1]=temp;</code>','<code>temp=arr[j+1]; arr[j+1]=arr[j]; arr[j]=arr[j+1];</code>','All of these work'],a:1,
+   e:'Park a copy, overwrite, restore. The others overwrite before copying, so one of the two values is destroyed and both slots end up holding the same number.'},
+  /* --- bubble --- */
+  {q:'In bubble sort, which elements move towards the <b>end</b> of the array?',
+   c:['The smallest','The largest','Random ones','The middle values'],a:1,
+   e:'Each comparison pushes the larger of a pair rightwards, so after one full pass the largest value has travelled all the way to the end — like a bubble rising.'},
+  {q:'Why does the inner loop run to <code>n - i - 1</code> rather than <code>n - 1</code>?',
+   c:['To avoid reading past the end only','Because after pass i, the last i elements are already sorted and need no rechecking','To sort in reverse','It is a mistake in most textbooks'],a:1,
+   e:'The <code>-1</code> keeps <code>j+1</code> inside the array; the <code>-i</code> skips the tail that is already finished. Dropping the <code>-i</code> still sorts correctly, just with wasted comparisons.'},
+  {q:'After ONE full pass of bubble sort on {40, 11, 91, 7, 24, 63}, what is the array?',
+   c:['{7, 11, 24, 40, 63, 91}','{11, 40, 7, 24, 63, 91}','{11, 40, 91, 7, 24, 63}','{40, 11, 91, 7, 24, 63}'],a:1,
+   e:'40/11 swap \u2192 11 40 91 7 24 63. 40/91 stay. 91/7 swap, 91/24 swap, 91/63 swap, so 91 walks to the end: {11, 40, 7, 24, 63, 91}.'},
+  {q:'What does the <code>swapped</code> flag optimisation achieve?',
+   c:['Fewer swaps','Early exit when a pass makes no swaps, giving a best case of O(n)','Sorting in descending order','Less memory'],a:1,
+   e:'A pass with zero swaps proves the array is already in order, so there is no point continuing. On already-sorted input bubble sort then finishes in a single pass.'},
+  {q:'Bubble sort\u2019s time complexity in the <b>worst</b> case?',c:['O(n)','O(log n)','O(n\u00b2)','O(n log n)'],a:2,
+   e:'Up to n passes, each doing up to n comparisons. Double the data and the work roughly quadruples — which is why neither of these sorts is used on large real datasets.'},
+  /* --- selection --- */
+  {q:'What happens in each pass of selection sort?',
+   c:['Adjacent elements are swapped repeatedly','The smallest remaining element is found and placed at the front of the unsorted part','The array is halved','Every element is compared with every other'],a:1,
+   e:'Scan the whole unsorted region for the minimum, then perform exactly one swap to put it in place. Look first, move once.'},
+  {q:'How many passes does selection sort need for 8 elements?',c:['8','7','6','4'],a:1,
+   e:'n&minus;1 = 7. Once seven elements are correctly placed, the eighth has nowhere else it could be, so no eighth pass is needed.'},
+  {q:'Which sort makes <b>fewer swaps</b>, and why does that matter?',
+   c:['Bubble — it swaps only adjacent items','Selection — at most n-1 swaps, which matters when each item is large','They are identical','Neither performs swaps'],a:1,
+   e:'Selection sort does one swap per pass at most. If each element is a whole record — name, ID, address — moving data is far more expensive than comparing it, and that promise becomes valuable.'},
+  {q:'You hand an <b>already sorted</b> array to selection sort. What happens?',
+   c:['It finishes immediately','It still performs all n-1 passes and all the comparisons','It crashes','It reverses the array'],a:1,
+   e:'Selection sort has no way to detect that the data is sorted — it must scan the unsorted region every pass to know where the minimum is. Its best, average and worst cases are all O(n\u00b2). Bubble sort with the flag is the one that can exit early.'},
+  {q:'In selection sort, the sorted region grows from which end?',c:['The left','The right','Both ends','The middle'],a:0,
+   e:'Each pass places the next smallest at the front, so sorted values accumulate on the left. Bubble sort is the opposite — largest values settle on the right.'},
+  /* --- choosing / applied --- */
+  {q:'Why is sorting worth doing even though it is slower than searching?',
+   c:['Sorted data looks tidier','It is a one-off cost that makes every future search dramatically faster','Sorting compresses the data','It removes duplicates'],a:1,
+   e:'Sort once, then binary search as many times as you like. On a list searched repeatedly, the sort pays for itself almost immediately — that relationship is the whole reason sorting matters.'},
+  {q:'A leaderboard updates after every game and is displayed highest-score-first. Which operation is that?',
+   c:['A search','A sort','Neither','Both, in that order'],a:1,
+   e:'Arranging by score is sorting. Real systems keep it sorted as scores arrive rather than re-sorting from scratch, but the concept is exactly the one here.'}
+  ],ok=>{
+    done++; if(ok) right++;
+    let m=`Answered ${done} of 30 — ${right} correct.`;
+    if(done===30) m += right>=28 ? `  ${G('Excellent. Now write all four algorithms from a blank file.')}`
+      : right>=23 ? `  ${G('Solid.')} Re-read the sections behind the ones you missed.`
+      : right>=15 ? `  ${Y('Halfway there.')} Redo Labs 2 and 4 with the Step button rather than Run.`
+      : `  ${Y('Worth another pass from the top.')} Work the notebook cells in order and press Run on every one.`;
+    say(score,m);
+  });
+})();
+
+/* ============================================================ nav + progress */
+(function(){
+  const bar=$('#progbar'), head=$('header.topbar'), nav=$('#jump'),
+        links=$$('#jump a'), secs=$$('main section');
+  let last=null;
+
+  /* The nav wraps rather than scrolls, so nothing is ever hidden. If it DOES wrap
+     onto a second line, shorten the labels so it comes back to one line. */
+  function wrapped(){
+    if(!links.length) return false;
+    return links[links.length-1].offsetTop > links[0].offsetTop + 2;
+  }
+  function fit(){
+    head.classList.remove('compact','micro');
+    if(wrapped()) head.classList.add('compact');
+    if(wrapped()) head.classList.add('micro');
+    document.documentElement.style.setProperty('--barh',(head.offsetHeight+10)+'px');
+  }
+
+  function upd(){
+    const h=document.documentElement;
+    bar.style.width=(h.scrollTop/Math.max(1,h.scrollHeight-h.clientHeight)*100)+'%';
+    head.classList.toggle('stuck', h.scrollTop>4);
+    let cur=null;
+    secs.forEach(s=>{ if(s.getBoundingClientRect().top<=150) cur=s.id; });
+    if(cur!==last){
+      last=cur;
+      links.forEach(a=>a.classList.toggle('on', a.getAttribute('href')==='#'+cur));
+      fit();                       // the active chip may have gained or lost its label
+    }
+  }
+  addEventListener('scroll',upd,{passive:true});
+  addEventListener('resize',()=>{ fit(); upd(); },{passive:true});
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  fit(); upd();
+})();
+})();
+</script>
+</body>
+</html>
