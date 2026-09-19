@@ -1546,7 +1546,7 @@ fillLab('#fillSel',
   const V=Array.from({length:32},(_,i)=>(i+1)*3);   // 3,6,...,96 sorted
   let timers=[];
   const clearT=()=>{ timers.forEach(clearTimeout); timers=[]; };
-  function mini(host,st){ host.innerHTML='<div class="arr" style="gap:2px">'+V.map((v,i)=>
+  function mini(host,st){ host.innerHTML='<div class="arr" style="gap:1px">'+V.map((v,i)=>
     `<div class="acell" style="width:15px;height:30px;font-size:8px;border-width:1.5px;${st[i]==='cmp'?'background:var(--cmp-s);border-color:var(--cmp)':st[i]==='out'?'background:var(--out-s);border-color:var(--out);opacity:.45':st[i]==='hit'?'background:var(--done);border-color:var(--done);color:#fff':''}">${v}</div>`).join('')+'</div>'; }
   function reset(){ clearT(); mini(L,{}); mini(B,{}); $('#raceLN').textContent='0'; $('#raceBN').textContent='0';
     say(out,'Pick a position and race them. Try 31 — the very last value.'); }
