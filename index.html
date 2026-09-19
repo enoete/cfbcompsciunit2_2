@@ -1572,7 +1572,12 @@ fillLab('#fillSel',
     },d*k*3)));
     timers.push(setTimeout(()=>{
       const lc=idx+1, bc=steps.length;
-      say(out,`Target ${K(target)} at index ${idx}.\n\n${R('Linear: '+lc+' comparisons')}   ${G('Binary: '+bc+' comparisons')}\n\nBinary was ${G((lc/bc).toFixed(1)+'x')} faster here. On 32 values binary never needs more than ${Y('6')} comparisons — no matter where the target hides.`);
+      const verdict = bc<lc
+        ? `Binary was ${G((lc/bc).toFixed(1)+'x')} faster here.`
+        : bc>lc
+          ? `${Y('Linear actually won this one')} — target ${target} sits early in the list, so a straight scan reaches it fast. Binary still has to halve its way down to it, which costs more steps for this particular target. That is not a flaw: "never more than 6" is a worst-case guarantee across all 32 positions, not a promise for every single search.`
+          : `${Y('A tie here')} — pure coincidence for this target.`;
+      say(out,`Target ${K(target)} at index ${idx}.\n\n${R('Linear: '+lc+' comparisons')}   ${G('Binary: '+bc+' comparisons')}\n\n${verdict} On 32 values binary never needs more than ${Y('6')} comparisons — no matter where the target hides.`);
     },d*Math.max(idx+1,steps.length*3)+200));
   };
   reset();
